@@ -1,7 +1,11 @@
+import os
 import streamlit as st
 import requests
 import time
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 st.set_page_config(
     page_title="실뭉치 🧶 뜨개 도안 찾기",
@@ -122,9 +126,16 @@ TAG_MAP = {
     },
 }
 
+# ── API 키 자동 로드 (st.secrets → .env 순) ──────────────────────────────────
+def _load_api_key() -> str:
+    try:
+        return st.secrets["YOUTUBE_API_KEY"]
+    except Exception:
+        return os.getenv("YOUTUBE_API_KEY", "")
+
 # ── Session state init ────────────────────────────────────────────────────────
 DEFAULTS = {
-    "api_key": "",
+    "api_key": _load_api_key(),
     "bookmarks": [],
     "progress": {},
     "search_results": [],
