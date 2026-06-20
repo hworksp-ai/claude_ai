@@ -103,6 +103,8 @@ h1, h2, h3, .page-title {
   border-bottom: none;
   display: block;
   width: 100%;
+  height: 160px !important;
+  object-fit: cover !important;
 }
 
 /* 이미지 바로 다음 버튼 = 카드 본문처럼 스타일 */
@@ -121,6 +123,11 @@ h1, h2, h3, .page-title {
   font-size: 13px !important;
   cursor: pointer !important;
   width: 100% !important;
+  height: 80px !important;
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
   box-shadow: 0 2px 8px rgba(61,43,31,.05) !important;
   transition: box-shadow .2s, transform .2s !important;
 }
