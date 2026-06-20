@@ -241,13 +241,18 @@ with st.sidebar:
     st.markdown("##### 뜨개 도안 찾기")
     st.divider()
 
-    st.markdown("**🔑 YouTube API 키**")
-    api_input = st.text_input("API 키", type="password", value=st.session_state.api_key, label_visibility="collapsed", placeholder="AIza...")
-    if st.button("저장", use_container_width=True):
-        st.session_state.api_key = api_input.strip()
-        st.success("저장되었습니다!")
-    if st.session_state.api_key:
-        st.success("✅ API 키 연결됨", icon=None)
+    if not st.session_state.api_key:
+        st.markdown("**🔑 YouTube API 키**")
+        api_input = st.text_input("API 키", type="password", label_visibility="collapsed", placeholder="AIza...")
+        if st.button("저장", use_container_width=True):
+            if api_input.strip():
+                st.session_state.api_key = api_input.strip()
+                st.rerun()
+    else:
+        st.success("✅ API 키 연결됨")
+        if st.button("🔑 키 변경", use_container_width=True):
+            st.session_state.api_key = ""
+            st.rerun()
 
     st.divider()
     nav = st.radio("메뉴", ["🔍 검색", "🔖 북마크"], label_visibility="collapsed")
