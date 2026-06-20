@@ -82,22 +82,8 @@ h1, h2, h3, .page-title {
   animation: yarn-trail 1.4s ease-in-out infinite;
 }
 
-/* ── 카드 ── */
-.knit-card {
-  background: var(--ivory); border-radius: 18px; border: 1.5px solid var(--beige);
-  overflow: hidden; transition: transform .2s, box-shadow .2s;
-  box-shadow: 0 2px 8px rgba(61,43,31,.05); margin-bottom: 4px;
-}
-.knit-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(61,43,31,.12); }
-.card-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
-.card-body { padding: 10px 12px 12px; }
-.card-title {
-  font-size: 13px; font-weight: 600; color: var(--brown); line-height: 1.4;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; margin-bottom: 4px;
-}
-.card-channel { font-size: 11px; color: var(--brown-light); margin-bottom: 8px; }
-.card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+/* ── 카드 (이미지 + 버튼 조합) ── */
+.card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 500; }
 .cat-기법    { background: #E0D4F0; color: #6B5A9E; }
 .cat-아이템  { background: #F9DDD4; color: #9E5A4A; }
@@ -109,6 +95,42 @@ h1, h2, h3, .page-title {
 .status-progress { background: #FFF3C0; color: #7A6000; }
 .status-done     { background: var(--sage-light); color: #2A5A2A; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 10px; margin-bottom: 6px; }
+
+/* 썸네일 이미지 상단 둥근 모서리 */
+[data-testid="stImage"] > img {
+  border-radius: 18px 18px 0 0 !important;
+  border: 1.5px solid var(--beige);
+  border-bottom: none;
+  display: block;
+  width: 100%;
+}
+
+/* 이미지 바로 다음 버튼 = 카드 본문처럼 스타일 */
+[data-testid="stImage"] + div .stButton > button,
+.element-container:has([data-testid="stImage"]) + .element-container .stButton > button {
+  border-radius: 0 0 18px 18px !important;
+  border: 1.5px solid var(--beige) !important;
+  border-top: none !important;
+  background: var(--ivory) !important;
+  color: var(--brown) !important;
+  text-align: left !important;
+  white-space: normal !important;
+  padding: 8px 12px 12px !important;
+  margin-top: -6px !important;
+  line-height: 1.45 !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  box-shadow: 0 2px 8px rgba(61,43,31,.05) !important;
+  transition: box-shadow .2s, transform .2s !important;
+}
+[data-testid="stImage"] + div .stButton > button:hover,
+.element-container:has([data-testid="stImage"]) + .element-container .stButton > button:hover {
+  box-shadow: 0 10px 28px rgba(61,43,31,.12) !important;
+  transform: translateY(-2px) !important;
+  background: var(--ivory) !important;
+  color: var(--brown) !important;
+}
 
 /* ── 타이머 ── */
 .timer-display {
@@ -147,15 +169,6 @@ h1, h2, h3, .page-title {
   font-family: 'Gowun Dodum', sans-serif !important;
 }
 
-/* ── 카드 클릭 ── */
-.knit-card { cursor: pointer; }
-/* 카드 바로 다음 트리거 버튼 숨김 (JS가 대신 클릭) */
-.element-container:has(.knit-card) + .element-container {
-  height: 0 !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -316,35 +329,16 @@ def tag_html(tags: list[dict], limit: int = 4) -> str:
     )
 
 
-_CLICK_JS = """
-(function(card){
-  var el = card.closest('.element-container');
-  var sib = el ? el.nextElementSibling : null;
-  while(sib){
-    var btn = sib.querySelector('button');
-    if(btn){ btn.click(); return; }
-    sib = sib.nextElementSibling;
-  }
-})(this)
-""".replace("\n", " ").strip()
-
-
-def card_html(v: dict) -> str:
-    bm = "🔖" if any(b["id"] == v["id"] for b in st.session_state.bookmarks) else "🤍"
-    return f"""
-<div class="knit-card" onclick="{_CLICK_JS}">
-  <img class="card-thumb" src="{v['thumb']}" alt="" />
-  <div class="card-body">
-    {status_badge_html(v['id'])}
-    <div class="card-title">{v['title']}</div>
-    <div class="card-channel">{v['channel']} {bm}</div>
-    <div class="card-tags">{tag_html(v['tags'])}</div>
-  </div>
-</div>"""
-
-
 def is_bookmarked(vid_id: str) -> bool:
     return any(b["id"] == vid_id for b in st.session_state.bookmarks)
+
+
+def card_button_label(v: dict) -> str:
+    status = st.session_state.progress.get(v["id"], {}).get("status", "not")
+    icons = {"not": "⬜", "progress": "🪡", "done": "✅"}
+    bm = "🔖" if is_bookmarked(v["id"]) else "🤍"
+    title = v["title"][:55] + ("…" if len(v["title"]) > 55 else "")
+    return f"{icons[status]} {v['channel']} {bm}\n{title}"
 
 
 def toggle_bookmark(v: dict):
@@ -572,8 +566,8 @@ elif st.session_state.view in ("search", None):
             cols = st.columns(cols_per_row)
             for col, v in zip(cols, row_vids):
                 with col:
-                    st.markdown(card_html(v), unsafe_allow_html=True)
-                    if st.button(f"__open__{v['id']}", key=f"open_{v['id']}", use_container_width=True):
+                    st.image(v["thumb"], use_container_width=True)
+                    if st.button(card_button_label(v), key=f"open_{v['id']}", use_container_width=True):
                         st.session_state.current_video = v
                         st.session_state.prev_view = "search"
                         st.session_state.view = "detail"
@@ -583,10 +577,8 @@ elif st.session_state.view in ("search", None):
                         st.session_state.timer_running = False
                         st.session_state.timer_start = None
                         st.rerun()
-                    bm_label = "🔖" if is_bookmarked(v["id"]) else "🤍"
-                    if st.button(bm_label, key=f"bm_{v['id']}", use_container_width=True):
-                        toggle_bookmark(v)
-                        st.rerun()
+                    if v["tags"]:
+                        st.markdown(f'<div class="card-tags">{tag_html(v["tags"])}</div>', unsafe_allow_html=True)
     elif not query:
         st.info("검색어를 입력하거나 태그를 선택해보세요 🧶")
     else:
@@ -607,8 +599,8 @@ elif st.session_state.view == "bookmarks":
             cols = st.columns(cols_per_row)
             for col, v in zip(cols, row_vids):
                 with col:
-                    st.markdown(card_html(v), unsafe_allow_html=True)
-                    if st.button(f"__open__{v['id']}", key=f"bm_open_{v['id']}", use_container_width=True):
+                    st.image(v["thumb"], use_container_width=True)
+                    if st.button(card_button_label(v), key=f"bm_open_{v['id']}", use_container_width=True):
                         st.session_state.current_video = v
                         st.session_state.prev_view = "bookmarks"
                         st.session_state.view = "detail"
@@ -618,6 +610,8 @@ elif st.session_state.view == "bookmarks":
                         st.session_state.timer_running = False
                         st.session_state.timer_start = None
                         st.rerun()
+                    if v["tags"]:
+                        st.markdown(f'<div class="card-tags">{tag_html(v["tags"])}</div>', unsafe_allow_html=True)
                     if st.button("🗑 삭제", key=f"del_bm_{v['id']}", use_container_width=True):
                         toggle_bookmark(v)
                         st.rerun()
