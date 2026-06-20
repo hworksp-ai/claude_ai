@@ -146,6 +146,16 @@ h1, h2, h3, .page-title {
   color: var(--brown) !important;
   font-family: 'Gowun Dodum', sans-serif !important;
 }
+
+/* ── 카드 클릭 ── */
+.knit-card { cursor: pointer; }
+/* 카드 바로 다음 트리거 버튼 숨김 (JS가 대신 클릭) */
+.element-container:has(.knit-card) + .element-container {
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -306,10 +316,23 @@ def tag_html(tags: list[dict], limit: int = 4) -> str:
     )
 
 
+_CLICK_JS = """
+(function(card){
+  var el = card.closest('.element-container');
+  var sib = el ? el.nextElementSibling : null;
+  while(sib){
+    var btn = sib.querySelector('button');
+    if(btn){ btn.click(); return; }
+    sib = sib.nextElementSibling;
+  }
+})(this)
+""".replace("\n", " ").strip()
+
+
 def card_html(v: dict) -> str:
     bm = "🔖" if any(b["id"] == v["id"] for b in st.session_state.bookmarks) else "🤍"
     return f"""
-<div class="knit-card">
+<div class="knit-card" onclick="{_CLICK_JS}">
   <img class="card-thumb" src="{v['thumb']}" alt="" />
   <div class="card-body">
     {status_badge_html(v['id'])}
@@ -550,12 +573,10 @@ elif st.session_state.view in ("search", None):
             for col, v in zip(cols, row_vids):
                 with col:
                     st.markdown(card_html(v), unsafe_allow_html=True)
-                    btn1, btn2 = st.columns(2)
-                    if btn1.button("상세 보기", key=f"open_{v['id']}", use_container_width=True):
+                    if st.button(f"__open__{v['id']}", key=f"open_{v['id']}", use_container_width=True):
                         st.session_state.current_video = v
                         st.session_state.prev_view = "search"
                         st.session_state.view = "detail"
-                        # Load saved counter/timer
                         saved = st.session_state.progress.get(v["id"], {})
                         st.session_state.counters = saved.get("counters", [0, 0, 0])
                         st.session_state.timer_accumulated = saved.get("timerSec", 0)
@@ -563,7 +584,7 @@ elif st.session_state.view in ("search", None):
                         st.session_state.timer_start = None
                         st.rerun()
                     bm_label = "🔖" if is_bookmarked(v["id"]) else "🤍"
-                    if btn2.button(bm_label, key=f"bm_{v['id']}", use_container_width=True):
+                    if st.button(bm_label, key=f"bm_{v['id']}", use_container_width=True):
                         toggle_bookmark(v)
                         st.rerun()
     elif not query:
@@ -587,8 +608,7 @@ elif st.session_state.view == "bookmarks":
             for col, v in zip(cols, row_vids):
                 with col:
                     st.markdown(card_html(v), unsafe_allow_html=True)
-                    btn1, btn2 = st.columns(2)
-                    if btn1.button("상세 보기", key=f"bm_open_{v['id']}", use_container_width=True):
+                    if st.button(f"__open__{v['id']}", key=f"bm_open_{v['id']}", use_container_width=True):
                         st.session_state.current_video = v
                         st.session_state.prev_view = "bookmarks"
                         st.session_state.view = "detail"
@@ -598,6 +618,6 @@ elif st.session_state.view == "bookmarks":
                         st.session_state.timer_running = False
                         st.session_state.timer_start = None
                         st.rerun()
-                    if btn2.button("🗑 삭제", key=f"del_bm_{v['id']}", use_container_width=True):
+                    if st.button("🗑 삭제", key=f"del_bm_{v['id']}", use_container_width=True):
                         toggle_bookmark(v)
                         st.rerun()
