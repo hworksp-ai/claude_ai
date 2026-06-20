@@ -90,9 +90,9 @@ h1, h2, h3, .page-title {
 .cat-동물    { background: #D4EDE8; color: #3A8A78; }
 .cat-난이도  { background: #F9EDD4; color: #8A7030; }
 .cat-도안    { background: #D4E4F0; color: #3A6A8A; }
-.status-not      { background: rgba(0,0,0,.55); color: #fff; }
-.status-progress { background: rgba(180,130,0,.85); color: #fff; }
-.status-done     { background: rgba(42,120,42,.85); color: #fff; }
+.status-not      { background: rgba(0,0,0,.25); color: #fff; }
+.status-progress { background: rgba(180,130,0,.35); color: #fff; }
+.status-done     { background: rgba(42,120,42,.35); color: #fff; }
 
 /* 카드 이미지 래퍼 */
 .card-img-wrap {
@@ -133,6 +133,7 @@ h1, h2, h3, .page-title {
   border-radius: 0 0 18px 18px;
   background: var(--ivory);
   margin-top: -4px;
+  margin-bottom: 16px;
 }
 
 /* 카드 제목 버튼 — card-img-wrap 직후 element-container 안의 버튼 */
@@ -147,6 +148,7 @@ h1, h2, h3, .page-title {
   white-space: normal !important;
   padding: 8px 12px !important;
   margin-top: -4px !important;
+  margin-bottom: 0 !important;
   line-height: 1.45 !important;
   font-size: 12px !important;
   cursor: pointer !important;
@@ -376,7 +378,7 @@ def card_button_label(v: dict) -> str:
 
 def card_img_html(v: dict) -> str:
     status = st.session_state.progress.get(v["id"], {}).get("status", "not")
-    labels = {"not": "⬜ 시작 전", "progress": "🪡 진행 중", "done": "✅ 완성"}
+    labels = {"not": "시작 전", "progress": "진행 중", "done": "완성"}
     cls = {"not": "status-not", "progress": "status-progress", "done": "status-done"}
     return (
         f'<div class="card-img-wrap">'
