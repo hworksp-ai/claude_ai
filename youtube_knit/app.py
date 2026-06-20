@@ -16,7 +16,7 @@ st.set_page_config(
 # ── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Playfair+Display:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap');
 
 :root {
   --cream: #FAF6F1; --ivory: #FFF8F0; --beige: #EDE0D4;
@@ -35,16 +35,16 @@ section[data-testid="stSidebar"] > div:first-child {
   border-right: 1.5px solid var(--beige);
 }
 
-/* ── 헤더 폰트 (Playfair Display) ── */
+/* ── 헤더 폰트 ── */
 h1, h2, h3, .page-title {
-  font-family: 'Playfair Display', serif !important;
+  font-family: 'Gowun Dodum', sans-serif !important;
   color: var(--brown) !important;
 }
 
 /* ── 사이드바 로고 ── */
 .sidebar-logo {
-  font-family: 'Playfair Display', serif;
-  font-size: 26px; font-style: italic;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 26px;
   color: var(--rose); letter-spacing: .5px;
   margin-bottom: 2px;
 }
@@ -125,8 +125,8 @@ h1, h2, h3, .page-title {
 
 /* ── 페이지 제목 장식선 ── */
 .page-heading {
-  font-family: 'Playfair Display', serif;
-  font-size: 28px; font-style: italic;
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 28px;
   color: var(--brown);
   border-bottom: 2px solid var(--beige);
   padding-bottom: 10px; margin-bottom: 20px;
