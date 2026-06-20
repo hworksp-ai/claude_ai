@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "knitting",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "C:\\Users\\admin\\Desktop\\claude_ai\\youtube_knit", "--listen", "3000", "--no-clipboard"],
+      "port": 3000
+    }
+  ]
+}
