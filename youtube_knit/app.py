@@ -397,17 +397,26 @@ elif st.session_state.view in ("search", None):
     search_clicked = sc2.button("검색 🧶", use_container_width=True)
 
     selected_tags = st.session_state.get("active_filters", [])
+    prev_filters = st.session_state.get("prev_filters", [])
+    filters_changed = sorted(selected_tags) != sorted(prev_filters)
 
-    if search_clicked or (query and query != st.session_state.get("search_query")):
+    should_search = (
+        search_clicked
+        or (query and query != st.session_state.get("search_query"))
+        or (filters_changed and (query or selected_tags))
+    )
+
+    if should_search:
         if not st.session_state.api_key:
             st.error("먼저 사이드바에서 API 키를 저장해주세요 🔑")
         else:
-            full_query = query + " " + " ".join(selected_tags)
+            full_query = (query + " " + " ".join(selected_tags)).strip() or "뜨개"
             with st.spinner("영상 찾는 중..."):
                 try:
                     results = search_youtube(full_query, st.session_state.api_key)
                     st.session_state.search_results = results
                     st.session_state.search_query = query
+                    st.session_state.prev_filters = selected_tags[:]
                 except Exception as e:
                     st.error(f"검색 실패: {e}")
 
