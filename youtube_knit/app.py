@@ -168,6 +168,14 @@ h1, h2, h3, .page-title {
 .element-container:has(.card-img-wrap) + .element-container + .element-container .card-tags-area {
   margin-top: -4px !important;
 }
+/* 카드 컬럼 overflow 해제 — 카드 하단 잘림 방지 */
+[data-testid="column"] {
+  overflow: visible !important;
+}
+[data-testid="stHorizontalBlock"] {
+  overflow: visible !important;
+  align-items: flex-start !important;
+}
 
 /* ── 타이머 ── */
 .timer-display {
