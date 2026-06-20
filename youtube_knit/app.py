@@ -23,22 +23,82 @@ st.markdown("""
   --rose: #C9897A; --rose-light: #F2D9D3; --sage: #8FAF8A; --sage-light: #D6E8D4;
   --brown: #3D2B1F; --brown-mid: #7A5C4E; --brown-light: #B89880;
 }
-html, body, [class*="css"] { font-family: 'Gowun Dodum', sans-serif !important; }
 
-/* 카드 그리드 */
+/* ── 전체 배경 & 기본 폰트 ── */
+html, body, [class*="css"], .stApp {
+  font-family: 'Gowun Dodum', sans-serif !important;
+  background-color: var(--cream) !important;
+}
+.stApp { background-color: var(--cream) !important; }
+section[data-testid="stSidebar"] > div:first-child {
+  background-color: var(--ivory) !important;
+  border-right: 1.5px solid var(--beige);
+}
+
+/* ── 헤더 폰트 (Playfair Display) ── */
+h1, h2, h3, .page-title {
+  font-family: 'Playfair Display', serif !important;
+  color: var(--brown) !important;
+}
+
+/* ── 사이드바 로고 ── */
+.sidebar-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; font-style: italic;
+  color: var(--rose); letter-spacing: .5px;
+  margin-bottom: 2px;
+}
+.sidebar-sub {
+  font-size: 12px; color: var(--brown-light); letter-spacing: .6px;
+}
+
+/* ── 실뭉치 로딩 애니메이션 ── */
+@keyframes yarn-spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(90deg) scale(1.08); }
+  50%  { transform: rotate(180deg) scale(1); }
+  75%  { transform: rotate(270deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes yarn-trail {
+  0%, 100% { opacity: .3; transform: scaleX(.6); }
+  50%       { opacity: .9; transform: scaleX(1); }
+}
+@keyframes yarn-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+.yarn-loader {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 32px 0;
+}
+.yarn-ball {
+  width: 56px; height: 56px; position: relative;
+  animation: yarn-spin 1.4s ease-in-out infinite, yarn-bounce 1.4s ease-in-out infinite;
+}
+.yarn-ball svg { width: 100%; height: 100%; }
+.yarn-label {
+  font-size: 13px; color: var(--brown-mid); letter-spacing: .4px;
+  animation: yarn-trail 1.4s ease-in-out infinite;
+}
+
+/* ── 카드 ── */
 .knit-card {
   background: var(--ivory); border-radius: 18px; border: 1.5px solid var(--beige);
   overflow: hidden; transition: transform .2s, box-shadow .2s;
   box-shadow: 0 2px 8px rgba(61,43,31,.05); margin-bottom: 4px;
 }
-.knit-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(61,43,31,.10); }
+.knit-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(61,43,31,.12); }
 .card-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
 .card-body { padding: 10px 12px 12px; }
-.card-title { font-size: 13px; font-weight: 600; color: var(--brown); line-height: 1.4;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+.card-title {
+  font-size: 13px; font-weight: 600; color: var(--brown); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; margin-bottom: 4px;
+}
 .card-channel { font-size: 11px; color: var(--brown-light); margin-bottom: 8px; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+.tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 500; }
 .cat-기법    { background: #E0D4F0; color: #6B5A9E; }
 .cat-아이템  { background: #F9DDD4; color: #9E5A4A; }
 .cat-캐릭터  { background: #F5D4E4; color: #9E4A78; }
@@ -50,15 +110,42 @@ html, body, [class*="css"] { font-family: 'Gowun Dodum', sans-serif !important; 
 .status-done     { background: var(--sage-light); color: #2A5A2A; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 10px; margin-bottom: 6px; }
 
-/* 타이머 */
-.timer-display { font-size: 40px; font-weight: 700; letter-spacing: 4px;
-  color: var(--brown); text-align: center; padding: 12px 0; font-family: monospace; }
+/* ── 타이머 ── */
+.timer-display {
+  font-size: 40px; font-weight: 700; letter-spacing: 4px;
+  color: var(--brown); text-align: center; padding: 12px 0; font-family: monospace;
+  background: var(--ivory); border-radius: 12px; border: 1.5px solid var(--beige);
+}
 
-/* 카운터 */
+/* ── 카운터 ── */
 .counter-val { font-size: 26px; font-weight: 700; color: var(--brown); min-width: 40px; text-align: center; }
 
-/* 섹션 레이블 */
+/* ── 섹션 레이블 ── */
 .sec-label { font-size: 11px; color: var(--brown-light); letter-spacing: .4px; margin-bottom: 6px; }
+
+/* ── 페이지 제목 장식선 ── */
+.page-heading {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; font-style: italic;
+  color: var(--brown);
+  border-bottom: 2px solid var(--beige);
+  padding-bottom: 10px; margin-bottom: 20px;
+}
+
+/* ── Streamlit 기본 버튼 톤 조정 ── */
+.stButton > button {
+  border-radius: 10px !important;
+  font-family: 'Gowun Dodum', sans-serif !important;
+}
+
+/* ── 검색창 ── */
+.stTextInput > div > div > input {
+  border-radius: 12px !important;
+  border: 1.5px solid var(--beige) !important;
+  background: var(--ivory) !important;
+  color: var(--brown) !important;
+  font-family: 'Gowun Dodum', sans-serif !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -247,9 +334,26 @@ def toggle_bookmark(v: dict):
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
+YARN_SVG = """
+<div class="yarn-loader">
+  <div class="yarn-ball">
+    <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="28" cy="28" r="26" fill="#F2D9D3" stroke="#C9897A" stroke-width="2"/>
+      <path d="M10 28 Q20 14 28 28 Q36 42 46 28" fill="none" stroke="#C9897A" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M14 18 Q28 8 42 18" fill="none" stroke="#8FAF8A" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14 38 Q28 48 42 38" fill="none" stroke="#8FAF8A" stroke-width="2" stroke-linecap="round"/>
+      <path d="M10 28 Q28 22 46 28" fill="none" stroke="#C9897A" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="44" cy="22" r="3" fill="#C9897A"/>
+      <path d="M44 22 Q50 16 54 20" fill="none" stroke="#C9897A" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="yarn-label">실 풀어오는 중… 🧶</div>
+</div>
+"""
+
 with st.sidebar:
-    st.markdown("# 🧶 실뭉치")
-    st.markdown("##### 뜨개 도안 찾기")
+    st.markdown('<div class="sidebar-logo">🧶 실뭉치</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-sub">뜨개 도안 찾기</div>', unsafe_allow_html=True)
     st.divider()
 
     if not st.session_state.api_key:
@@ -400,7 +504,7 @@ if st.session_state.view == "detail" and st.session_state.current_video:
 
 # ── SEARCH VIEW ───────────────────────────────────────────────────────────────
 elif st.session_state.view in ("search", None):
-    st.markdown("## 🧶 뜨개 도안 찾기")
+    st.markdown('<div class="page-heading">🧶 뜨개 도안 찾기</div>', unsafe_allow_html=True)
 
     # Search bar
     sc1, sc2 = st.columns([5, 1])
@@ -422,14 +526,16 @@ elif st.session_state.view in ("search", None):
             st.error("먼저 사이드바에서 API 키를 저장해주세요 🔑")
         else:
             full_query = (query + " " + " ".join(selected_tags)).strip() or "뜨개"
-            with st.spinner("영상 찾는 중..."):
-                try:
-                    results = search_youtube(full_query, st.session_state.api_key)
-                    st.session_state.search_results = results
-                    st.session_state.search_query = query
-                    st.session_state.prev_filters = selected_tags[:]
-                except Exception as e:
-                    st.error(f"검색 실패: {e}")
+            yarn_ph = st.empty()
+            yarn_ph.markdown(YARN_SVG, unsafe_allow_html=True)
+            try:
+                results = search_youtube(full_query, st.session_state.api_key)
+                st.session_state.search_results = results
+                st.session_state.search_query = query
+                st.session_state.prev_filters = selected_tags[:]
+            except Exception as e:
+                st.error(f"검색 실패: {e}")
+            yarn_ph.empty()
 
     results = st.session_state.search_results
     if selected_tags and results:
@@ -468,7 +574,7 @@ elif st.session_state.view in ("search", None):
 
 # ── BOOKMARKS VIEW ────────────────────────────────────────────────────────────
 elif st.session_state.view == "bookmarks":
-    st.markdown("## 🔖 북마크")
+    st.markdown('<div class="page-heading">🔖 북마크</div>', unsafe_allow_html=True)
     bms = st.session_state.bookmarks
     if not bms:
         st.info("저장된 도안이 없어요. 마음에 드는 영상에 북마크를 눌러보세요.")
