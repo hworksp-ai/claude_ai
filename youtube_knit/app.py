@@ -169,7 +169,11 @@ h1, h2, h3, .page-title {
   margin-top: -4px !important;
 }
 /* 카드 컬럼 overflow 해제 — 카드 하단 잘림 방지 */
-[data-testid="column"] {
+[data-testid="stColumn"],
+[data-testid="stColumn"] > div,
+[data-testid="stVerticalBlockBorderWrapper"],
+[data-testid="stVerticalBlock"],
+.stColumn, .stColumn > div {
   overflow: visible !important;
 }
 [data-testid="stHorizontalBlock"] {
