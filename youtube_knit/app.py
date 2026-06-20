@@ -265,6 +265,20 @@ with st.sidebar:
     if bm_count:
         st.caption(f"북마크 {bm_count}개")
 
+    # ── 태그 필터 (검색 뷰에서만) ─────────────────────────────────────────
+    if st.session_state.view in ("search", None):
+        st.divider()
+        st.markdown("**🏷 태그로 필터링**")
+        selected_tags = []
+        for cat, data in TAG_MAP.items():
+            tags_in_cat = list(data["keywords"].keys())
+            chosen = st.multiselect(cat, tags_in_cat, key=f"filter_{cat}")
+            selected_tags.extend(chosen)
+        st.session_state.active_filters = selected_tags
+    else:
+        # detail/bookmarks 뷰에서는 필터 상태만 유지
+        selected_tags = st.session_state.get("active_filters", [])
+
 
 # ── DETAIL VIEW ───────────────────────────────────────────────────────────────
 if st.session_state.view == "detail" and st.session_state.current_video:
@@ -382,13 +396,7 @@ elif st.session_state.view in ("search", None):
     query = sc1.text_input("검색어", placeholder="코바늘 가방, 플레이브 인형, 강아지 뜨개...", label_visibility="collapsed")
     search_clicked = sc2.button("검색 🧶", use_container_width=True)
 
-    # Filter tags
-    st.markdown("**태그로 필터링**")
-    selected_tags = []
-    for cat, data in TAG_MAP.items():
-        tags_in_cat = list(data["keywords"].keys())
-        chosen = st.multiselect(cat, tags_in_cat, key=f"filter_{cat}", label_visibility="visible")
-        selected_tags.extend(chosen)
+    selected_tags = st.session_state.get("active_filters", [])
 
     if search_clicked or (query and query != st.session_state.get("search_query")):
         if not st.session_state.api_key:
