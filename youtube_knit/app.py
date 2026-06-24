@@ -308,36 +308,38 @@ h1, h2, h3, .page-title {
   color: var(--brown) !important;
 }
 
-/* ── st.success 박스 (초록 → 세이지) ── */
-[data-testid="stAlert"][kind="success"],
-div[data-baseweb="notification"][kind="positive"],
-.stAlert > div[data-testid="stAlertContentSuccess"],
-.element-container div[class*="success"] {
+/* ── 알림 박스 전체 색상 재정의 ── */
+div[data-testid="stAlert"] {
+  border-radius: 10px !important;
+  border-left-width: 4px !important;
+}
+/* success (초록 → 세이지) */
+div[data-testid="stAlert"]:has(svg[data-testid="stAlertDynamicIcon-success"]),
+div[data-testid="stNotification"][data-type="success"] {
   background-color: var(--sage-light) !important;
   border-color: var(--sage) !important;
-  color: var(--brown) !important;
 }
-.stAlert [data-testid="stAlertContentSuccess"] *,
-[data-testid="stAlert"] p {
-  color: var(--brown) !important;
-}
-/* st.info 박스 (파란 → 베이지) */
-[data-testid="stAlert"][kind="info"],
-div[data-baseweb="notification"][kind="info"],
-.stAlert > div[data-testid="stAlertContentInfo"],
-.element-container div[class*="info"] {
+/* info (파란 → 베이지) */
+div[data-testid="stAlert"]:has(svg[data-testid="stAlertDynamicIcon-info"]),
+div[data-testid="stNotification"][data-type="info"] {
   background-color: var(--beige) !important;
   border-color: var(--brown-light) !important;
-  color: var(--brown) !important;
 }
-.stAlert [data-testid="stAlertContentInfo"] *,
-[data-testid="stAlert"][kind="info"] p {
-  color: var(--brown) !important;
-}
-/* st.error 박스 */
-[data-testid="stAlert"][kind="error"] {
+/* error (빨간 → 연한 로즈) */
+div[data-testid="stAlert"]:has(svg[data-testid="stAlertDynamicIcon-error"]),
+div[data-testid="stNotification"][data-type="error"] {
   background-color: #F9E0DC !important;
   border-color: var(--rose) !important;
+}
+/* 알림 박스 내 텍스트 */
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] span,
+div[data-testid="stAlert"] div {
+  color: var(--brown) !important;
+}
+/* 아이콘 색상 */
+div[data-testid="stAlert"] svg {
+  fill: var(--brown) !important;
   color: var(--brown) !important;
 }
 
@@ -576,7 +578,7 @@ with st.sidebar:
                 st.session_state.api_key = api_input.strip()
                 st.rerun()
     else:
-        st.success("✅ API 키 연결됨")
+        st.markdown('<div style="background:var(--sage-light);border-left:4px solid var(--sage);border-radius:8px;padding:10px 14px;color:var(--brown);font-family:\'Gowun Dodum\',sans-serif;">✅ API 키 연결됨</div>', unsafe_allow_html=True)
         if st.button("🔑 키 변경", use_container_width=True):
             st.session_state.api_key = ""
             st.rerun()
@@ -735,7 +737,7 @@ elif st.session_state.view in ("search", None):
 
     if should_search:
         if not st.session_state.api_key:
-            st.error("먼저 사이드바에서 API 키를 저장해주세요 🔑")
+            st.markdown('<div style="background:#F9E0DC;border-left:4px solid #C9897A;border-radius:8px;padding:10px 14px;color:#3D2B1F;font-family:\'Gowun Dodum\',sans-serif;">먼저 사이드바에서 API 키를 저장해주세요 🔑</div>', unsafe_allow_html=True)
         else:
             full_query = (query + " " + " ".join(selected_tags)).strip() or "뜨개"
             yarn_ph = st.empty()
@@ -746,7 +748,7 @@ elif st.session_state.view in ("search", None):
                 st.session_state.search_query = query
                 st.session_state.prev_filters = selected_tags[:]
             except Exception as e:
-                st.error(f"검색 실패: {e}")
+                st.markdown(f'<div style="background:#F9E0DC;border-left:4px solid #C9897A;border-radius:8px;padding:10px 14px;color:#3D2B1F;font-family:\'Gowun Dodum\',sans-serif;">검색 실패: {e}</div>', unsafe_allow_html=True)
             yarn_ph.empty()
 
     results = st.session_state.search_results
@@ -774,9 +776,9 @@ elif st.session_state.view in ("search", None):
                         st.rerun()
                     st.markdown(card_tags_html(v), unsafe_allow_html=True)
     elif not query:
-        st.info("검색어를 입력하거나 태그를 선택해보세요 🧶")
+        st.markdown('<div style="background:#EDE0D4;border-left:4px solid #B89880;border-radius:8px;padding:10px 14px;color:#3D2B1F;font-family:\'Gowun Dodum\',sans-serif;">검색어를 입력하거나 태그를 선택해보세요 🧶</div>', unsafe_allow_html=True)
     else:
-        st.info("결과가 없어요. 다른 검색어를 시도해보세요.")
+        st.markdown('<div style="background:#EDE0D4;border-left:4px solid #B89880;border-radius:8px;padding:10px 14px;color:#3D2B1F;font-family:\'Gowun Dodum\',sans-serif;">결과가 없어요. 다른 검색어를 시도해보세요.</div>', unsafe_allow_html=True)
 
 
 # ── BOOKMARKS VIEW ────────────────────────────────────────────────────────────
@@ -784,7 +786,7 @@ elif st.session_state.view == "bookmarks":
     st.markdown('<div class="page-heading">🔖 북마크</div>', unsafe_allow_html=True)
     bms = st.session_state.bookmarks
     if not bms:
-        st.info("저장된 도안이 없어요. 마음에 드는 영상에 북마크를 눌러보세요.")
+        st.markdown('<div style="background:#EDE0D4;border-left:4px solid #B89880;border-radius:8px;padding:10px 14px;color:#3D2B1F;font-family:\'Gowun Dodum\',sans-serif;">저장된 도안이 없어요. 마음에 드는 영상에 북마크를 눌러보세요.</div>', unsafe_allow_html=True)
     else:
         st.caption(f"총 {len(bms)}개")
         cols_per_row = 4
