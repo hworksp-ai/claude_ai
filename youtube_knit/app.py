@@ -578,7 +578,7 @@ with st.sidebar:
                 st.session_state.api_key = api_input.strip()
                 st.rerun()
     else:
-        st.markdown('<div style="background:var(--sage-light);border-left:4px solid var(--sage);border-radius:8px;padding:10px 14px;color:var(--brown);font-family:\'Gowun Dodum\',sans-serif;">✅ API 키 연결됨</div>', unsafe_allow_html=True)
+        st.markdown('<div style="background:#EDE0D4;border-left:4px solid #B89880;border-radius:8px;padding:10px 14px;color:#3D2B1F;font-family:\'Gowun Dodum\',sans-serif;">✅ API 키 연결됨</div>', unsafe_allow_html=True)
         if st.button("🔑 키 변경", use_container_width=True):
             st.session_state.api_key = ""
             st.rerun()
