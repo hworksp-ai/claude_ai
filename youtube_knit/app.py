@@ -308,6 +308,39 @@ h1, h2, h3, .page-title {
   color: var(--brown) !important;
 }
 
+/* ── st.success 박스 (초록 → 세이지) ── */
+[data-testid="stAlert"][kind="success"],
+div[data-baseweb="notification"][kind="positive"],
+.stAlert > div[data-testid="stAlertContentSuccess"],
+.element-container div[class*="success"] {
+  background-color: var(--sage-light) !important;
+  border-color: var(--sage) !important;
+  color: var(--brown) !important;
+}
+.stAlert [data-testid="stAlertContentSuccess"] *,
+[data-testid="stAlert"] p {
+  color: var(--brown) !important;
+}
+/* st.info 박스 (파란 → 베이지) */
+[data-testid="stAlert"][kind="info"],
+div[data-baseweb="notification"][kind="info"],
+.stAlert > div[data-testid="stAlertContentInfo"],
+.element-container div[class*="info"] {
+  background-color: var(--beige) !important;
+  border-color: var(--brown-light) !important;
+  color: var(--brown) !important;
+}
+.stAlert [data-testid="stAlertContentInfo"] *,
+[data-testid="stAlert"][kind="info"] p {
+  color: var(--brown) !important;
+}
+/* st.error 박스 */
+[data-testid="stAlert"][kind="error"] {
+  background-color: #F9E0DC !important;
+  border-color: var(--rose) !important;
+  color: var(--brown) !important;
+}
+
 /* ── 사이드바 레이블 ── */
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] p,
