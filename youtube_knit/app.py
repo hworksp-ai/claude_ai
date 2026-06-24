@@ -207,6 +207,24 @@ h1, h2, h3, .page-title {
 .stButton > button {
   border-radius: 10px !important;
   font-family: 'Gowun Dodum', sans-serif !important;
+  background-color: var(--rose) !important;
+  color: #fff !important;
+  border: none !important;
+}
+.stButton > button:hover {
+  background-color: var(--brown-mid) !important;
+  color: #fff !important;
+}
+
+/* ── secondary 버튼 ── */
+.stButton > button[kind="secondary"] {
+  background-color: var(--beige) !important;
+  color: var(--brown) !important;
+  border: 1.5px solid var(--brown-light) !important;
+}
+.stButton > button[kind="secondary"]:hover {
+  background-color: var(--rose-light) !important;
+  color: var(--brown) !important;
 }
 
 /* ── 검색창 ── */
@@ -214,6 +232,65 @@ h1, h2, h3, .page-title {
   border-radius: 12px !important;
   border: 1.5px solid var(--beige) !important;
   background: var(--ivory) !important;
+  color: var(--brown) !important;
+  font-family: 'Gowun Dodum', sans-serif !important;
+}
+
+/* ── 라디오 버튼 ── */
+.stRadio > div {
+  background: transparent !important;
+}
+.stRadio label {
+  color: var(--brown) !important;
+  font-family: 'Gowun Dodum', sans-serif !important;
+}
+.stRadio [data-testid="stMarkdownContainer"] p {
+  color: var(--brown) !important;
+}
+
+/* ── 멀티셀렉트 ── */
+.stMultiSelect > div > div {
+  background-color: var(--ivory) !important;
+  border: 1.5px solid var(--beige) !important;
+  border-radius: 10px !important;
+  color: var(--brown) !important;
+}
+.stMultiSelect > div > div > div {
+  color: var(--brown) !important;
+}
+.stMultiSelect [data-baseweb="select"] > div {
+  background-color: var(--ivory) !important;
+  color: var(--brown) !important;
+}
+.stMultiSelect span {
+  color: var(--brown) !important;
+}
+/* 드롭다운 메뉴 팝업 */
+[data-baseweb="popover"] ul,
+[data-baseweb="menu"] {
+  background-color: var(--ivory) !important;
+  color: var(--brown) !important;
+}
+[data-baseweb="option"] {
+  background-color: var(--ivory) !important;
+  color: var(--brown) !important;
+}
+[data-baseweb="option"]:hover {
+  background-color: var(--rose-light) !important;
+}
+/* 선택된 태그 chip */
+[data-baseweb="tag"] {
+  background-color: var(--rose-light) !important;
+  color: var(--brown) !important;
+}
+[data-baseweb="tag"] span {
+  color: var(--brown) !important;
+}
+
+/* ── 사이드바 레이블 ── */
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span {
   color: var(--brown) !important;
   font-family: 'Gowun Dodum', sans-serif !important;
 }
