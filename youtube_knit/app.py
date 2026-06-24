@@ -267,16 +267,37 @@ h1, h2, h3, .page-title {
 }
 /* 드롭다운 메뉴 팝업 */
 [data-baseweb="popover"] ul,
-[data-baseweb="menu"] {
+[data-baseweb="popover"] li,
+[data-baseweb="menu"],
+[data-baseweb="menu"] ul,
+[data-baseweb="menu"] li {
   background-color: var(--ivory) !important;
   color: var(--brown) !important;
 }
-[data-baseweb="option"] {
+[data-baseweb="option"],
+[data-baseweb="option"] *,
+[data-baseweb="option"] span,
+[data-baseweb="option"] div {
   background-color: var(--ivory) !important;
   color: var(--brown) !important;
 }
-[data-baseweb="option"]:hover {
+[data-baseweb="option"]:hover,
+[data-baseweb="option"]:hover * {
   background-color: var(--rose-light) !important;
+  color: var(--brown) !important;
+}
+/* Select all 버튼 */
+[data-baseweb="menu"] button,
+[data-baseweb="popover"] button {
+  background-color: var(--beige) !important;
+  color: var(--brown) !important;
+}
+/* 팝업 전체 래퍼 */
+[data-baseweb="popover"] > div,
+[data-baseweb="popover"] [role="listbox"],
+[data-baseweb="popover"] [role="option"] {
+  background-color: var(--ivory) !important;
+  color: var(--brown) !important;
 }
 /* 선택된 태그 chip */
 [data-baseweb="tag"] {
