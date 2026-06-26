@@ -373,28 +373,43 @@ section[data-testid="stSidebar"] span {
 </style>
 """, unsafe_allow_html=True)
 
-components.html("""
+_current_view = st.session_state.get("view", "search")
+components.html(f"""
 <script>
-(function() {
+(function() {{
   var doc = window.parent.document;
-  function bindThumbClicks() {
-    doc.querySelectorAll('.card-img-wrap:not([data-thumb-bound])').forEach(function(wrap) {
+  var win = window.parent;
+
+  // ── 썸네일 클릭 → 제목 버튼 트리거 ──────────────────────────────────
+  function bindThumbClicks() {{
+    doc.querySelectorAll('.card-img-wrap:not([data-thumb-bound])').forEach(function(wrap) {{
       wrap.setAttribute('data-thumb-bound', '1');
       wrap.style.cursor = 'pointer';
-      wrap.addEventListener('click', function() {
+      wrap.addEventListener('click', function() {{
         var ec = wrap.closest('.element-container');
         if (!ec) return;
         var next = ec.nextElementSibling;
         if (!next) return;
         var btn = next.querySelector('.stButton button');
         if (btn) btn.click();
-      });
-    });
-  }
+      }});
+    }});
+  }}
   var observer = new MutationObserver(bindThumbClicks);
-  observer.observe(doc.body, { childList: true, subtree: true });
+  observer.observe(doc.body, {{ childList: true, subtree: true }});
   bindThumbClicks();
-})();
+
+  // ── 브라우저 뒤로가기: pushState로 히스토리 항목 수동 생성 ──────────
+  // Python st.query_params는 replaceState만 사용하므로 JS가 직접 pushState 추가
+  var currentView = "{_current_view}";
+  if (currentView === 'detail' && !win.__stDetailHistoryPushed) {{
+    win.__stDetailHistoryPushed = true;
+    // 현재 URL(?view=detail)로 pushState → 뒤로가기 히스토리 항목 생성
+    win.history.pushState({{ stDetail: true }}, '', win.location.href);
+  }} else if (currentView !== 'detail') {{
+    win.__stDetailHistoryPushed = false;
+  }}
+}})();
 </script>
 """, height=1)
 
@@ -492,6 +507,7 @@ for k, v in DEFAULTS.items():
 if st.query_params.get("view") != "detail" and st.session_state.view == "detail":
     st.session_state.view = st.session_state.get("prev_view", "search")
     st.session_state.current_video = None
+    st.rerun()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
