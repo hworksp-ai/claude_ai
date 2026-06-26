@@ -126,9 +126,9 @@ h1, h2, h3, .page-title {
   display: flex;
   flex-wrap: nowrap;
   gap: 4px;
-  height: 26px;
+  height: 38px;
   overflow: hidden;
-  padding: 4px 10px 0;
+  padding: 6px 10px 0;
   border: 1.5px solid var(--beige);
   border-top: none;
   border-radius: 0 0 18px 18px;
