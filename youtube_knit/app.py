@@ -133,12 +133,12 @@ h1, h2, h3, .page-title {
   border-top: none;
   border-radius: 0 0 18px 18px;
   background: var(--ivory);
-  margin-top: -4px;
-  margin-bottom: 16px;
+  margin-top: 0;
+  margin-bottom: 24px;
 }
 
-/* 카드가 있는 컬럼의 vertical block gap 제거 */
-[data-testid="stVerticalBlock"]:has(.card-img-wrap) {
+/* 카드가 있는 컬럼 내부의 vertical block gap만 제거 (행 간격은 유지) */
+[data-testid="stColumn"] [data-testid="stVerticalBlock"]:has(.card-img-wrap) {
   gap: 0 !important;
 }
 /* 카드 3개 element-container 사이 간격 제거 */
