@@ -137,6 +137,10 @@ h1, h2, h3, .page-title {
   margin-bottom: 16px;
 }
 
+/* 카드가 있는 컬럼의 vertical block gap 제거 */
+[data-testid="stVerticalBlock"]:has(.card-img-wrap) {
+  gap: 0 !important;
+}
 /* 카드 3개 element-container 사이 간격 제거 */
 .element-container:has(.card-img-wrap),
 .element-container:has(.card-img-wrap) + .element-container,
