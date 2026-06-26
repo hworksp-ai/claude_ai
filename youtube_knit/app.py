@@ -166,6 +166,8 @@ h1, h2, h3, .page-title {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
   line-height: 1.45 !important;
+  align-items: flex-start !important;
+  vertical-align: top !important;
   font-size: 12px !important;
   cursor: pointer !important;
   width: 100% !important;
