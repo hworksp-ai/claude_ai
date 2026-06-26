@@ -137,6 +137,16 @@ h1, h2, h3, .page-title {
   margin-bottom: 16px;
 }
 
+/* 카드 3개 element-container 사이 간격 제거 */
+.element-container:has(.card-img-wrap),
+.element-container:has(.card-img-wrap) + .element-container,
+.element-container:has(.card-img-wrap) + .element-container + .element-container {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
 /* 카드 제목 버튼 — card-img-wrap 직후 element-container 안의 버튼 */
 .element-container:has(.card-img-wrap) + .element-container .stButton > button {
   border-radius: 0 !important;
@@ -148,7 +158,7 @@ h1, h2, h3, .page-title {
   text-align: left !important;
   white-space: normal !important;
   padding: 8px 12px !important;
-  margin-top: -4px !important;
+  margin-top: 0 !important;
   margin-bottom: 0 !important;
   line-height: 1.45 !important;
   font-size: 12px !important;
@@ -165,9 +175,9 @@ h1, h2, h3, .page-title {
   box-shadow: none !important;
   transform: none !important;
 }
-/* 태그 영역 margin 보정 */
+/* 태그 영역 margin 제거 */
 .element-container:has(.card-img-wrap) + .element-container + .element-container .card-tags-area {
-  margin-top: -4px !important;
+  margin-top: 0 !important;
 }
 /* 카드 컬럼 overflow 해제 — 카드 하단 잘림 방지 */
 [data-testid="stColumn"],
