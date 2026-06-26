@@ -124,10 +124,11 @@ h1, h2, h3, .page-title {
 /* 태그 영역 */
 .card-tags-area {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
-  min-height: 28px;
-  padding: 4px 4px 2px;
+  height: 38px;
+  overflow: hidden;
+  padding: 6px 6px 0;
   border: 1.5px solid var(--beige);
   border-top: none;
   border-radius: 0 0 18px 18px;
