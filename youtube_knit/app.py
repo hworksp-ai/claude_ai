@@ -83,7 +83,7 @@ h1, h2, h3, .page-title {
 }
 
 /* ── 카드 ── */
-.tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 500; }
+.tag { padding: 1px 7px 0px; border-radius: 10px; font-size: 10px; font-weight: 500; line-height: 1.6; }
 .cat-기법    { background: #E0D4F0; color: #6B5A9E; }
 .cat-아이템  { background: #F9DDD4; color: #9E5A4A; }
 .cat-캐릭터  { background: #F5D4E4; color: #9E4A78; }
@@ -126,9 +126,9 @@ h1, h2, h3, .page-title {
   display: flex;
   flex-wrap: nowrap;
   gap: 4px;
-  height: 38px;
+  height: 30px;
   overflow: hidden;
-  padding: 6px 6px 0;
+  padding: 4px 6px 0;
   border: 1.5px solid var(--beige);
   border-top: none;
   border-radius: 0 0 18px 18px;
