@@ -373,43 +373,68 @@ section[data-testid="stSidebar"] span {
 </style>
 """, unsafe_allow_html=True)
 
-_current_view = st.session_state.get("view", "search")
-components.html(f"""
+components.html("""
 <script>
-(function() {{
+(function() {
   var doc = window.parent.document;
   var win = window.parent;
 
   // ── 썸네일 클릭 → 제목 버튼 트리거 ──────────────────────────────────
-  function bindThumbClicks() {{
-    doc.querySelectorAll('.card-img-wrap:not([data-thumb-bound])').forEach(function(wrap) {{
+  function bindThumbClicks() {
+    doc.querySelectorAll('.card-img-wrap:not([data-thumb-bound])').forEach(function(wrap) {
       wrap.setAttribute('data-thumb-bound', '1');
       wrap.style.cursor = 'pointer';
-      wrap.addEventListener('click', function() {{
+      wrap.addEventListener('click', function() {
         var ec = wrap.closest('.element-container');
         if (!ec) return;
         var next = ec.nextElementSibling;
         if (!next) return;
         var btn = next.querySelector('.stButton button');
         if (btn) btn.click();
-      }});
-    }});
-  }}
-  var observer = new MutationObserver(bindThumbClicks);
-  observer.observe(doc.body, {{ childList: true, subtree: true }});
-  bindThumbClicks();
+      });
+    });
+  }
 
-  // ── 브라우저 뒤로가기: pushState로 히스토리 항목 수동 생성 ──────────
-  // Python st.query_params는 replaceState만 사용하므로 JS가 직접 pushState 추가
-  var currentView = "{_current_view}";
-  if (currentView === 'detail' && !win.__stDetailHistoryPushed) {{
-    win.__stDetailHistoryPushed = true;
-    // 현재 URL(?view=detail)로 pushState → 뒤로가기 히스토리 항목 생성
-    win.history.pushState({{ stDetail: true }}, '', win.location.href);
-  }} else if (currentView !== 'detail') {{
-    win.__stDetailHistoryPushed = false;
-  }}
-}})();
+  // ── 뒤로가기: DOM에서 '목록으로' 버튼 존재로 상세 뷰 감지 후 pushState ──
+  function findBackBtn() {
+    var btns = doc.querySelectorAll('.stButton button');
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.includes('목록으로')) return btns[i];
+    }
+    return null;
+  }
+
+  function syncHistory() {
+    var backBtn = findBackBtn();
+    if (backBtn && !win.__stDetailPushed) {
+      win.__stDetailPushed = true;
+      win.history.pushState({stDetail: true}, '');
+    } else if (!backBtn) {
+      win.__stDetailPushed = false;
+    }
+  }
+
+  // popstate: 뒤로가기 감지 → 목록으로 버튼 클릭
+  if (!win.__stPopBound) {
+    win.__stPopBound = true;
+    win.addEventListener('popstate', function() {
+      var btn = findBackBtn();
+      if (btn) {
+        win.__stDetailPushed = false;
+        btn.click();
+      }
+    });
+  }
+
+  // MutationObserver: DOM 변경마다 썸네일 바인딩 + 히스토리 동기화
+  var observer = new MutationObserver(function() {
+    bindThumbClicks();
+    syncHistory();
+  });
+  observer.observe(doc.body, {childList: true, subtree: true});
+  bindThumbClicks();
+  syncHistory();
+})();
 </script>
 """, height=1)
 
@@ -503,11 +528,6 @@ for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# 브라우저 뒤로가기 감지: URL에 view=detail 없는데 세션은 detail이면 목록으로 복귀
-if st.query_params.get("view") != "detail" and st.session_state.view == "detail":
-    st.session_state.view = st.session_state.get("prev_view", "search")
-    st.session_state.current_video = None
-    st.rerun()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -685,7 +705,6 @@ if st.session_state.view == "detail" and st.session_state.current_video:
             st.session_state.timer_accumulated = get_elapsed()
             st.session_state.timer_running = False
             st.session_state.timer_start = None
-        st.query_params.clear()
         st.rerun()
 
     left, right = st.columns([3, 2])
@@ -839,7 +858,6 @@ elif st.session_state.view in ("search", None):
                         st.session_state.timer_accumulated = saved.get("timerSec", 0)
                         st.session_state.timer_running = False
                         st.session_state.timer_start = None
-                        st.query_params["view"] = "detail"
                         st.rerun()
                     st.markdown(card_tags_html(v), unsafe_allow_html=True)
     elif not query:
@@ -872,7 +890,6 @@ elif st.session_state.view == "bookmarks":
                         st.session_state.timer_accumulated = saved.get("timerSec", 0)
                         st.session_state.timer_running = False
                         st.session_state.timer_start = None
-                        st.query_params["view"] = "detail"
                         st.rerun()
                     st.markdown(card_tags_html(v), unsafe_allow_html=True)
                     if st.button("🗑 삭제", key=f"del_bm_{v['id']}", use_container_width=True):
