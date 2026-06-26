@@ -373,28 +373,56 @@ section[data-testid="stSidebar"] span {
 </style>
 """, unsafe_allow_html=True)
 
-components.html("""
+_current_view = st.session_state.get("view", "search")
+components.html(f"""
 <script>
-(function() {
+(function() {{
   var doc = window.parent.document;
-  function bindThumbClicks() {
-    doc.querySelectorAll('.card-img-wrap:not([data-thumb-bound])').forEach(function(wrap) {
+  var win = window.parent;
+  var currentView = "{_current_view}";
+
+  // ── 썸네일 클릭 → 제목 버튼 트리거 ──────────────────────────────────────
+  function bindThumbClicks() {{
+    doc.querySelectorAll('.card-img-wrap:not([data-thumb-bound])').forEach(function(wrap) {{
       wrap.setAttribute('data-thumb-bound', '1');
       wrap.style.cursor = 'pointer';
-      wrap.addEventListener('click', function() {
+      wrap.addEventListener('click', function() {{
         var ec = wrap.closest('.element-container');
         if (!ec) return;
         var next = ec.nextElementSibling;
         if (!next) return;
         var btn = next.querySelector('.stButton button');
         if (btn) btn.click();
-      });
-    });
-  }
+      }});
+    }});
+  }}
   var observer = new MutationObserver(bindThumbClicks);
-  observer.observe(doc.body, { childList: true, subtree: true });
+  observer.observe(doc.body, {{ childList: true, subtree: true }});
   bindThumbClicks();
-})();
+
+  // ── 브라우저 뒤로가기 지원 ───────────────────────────────────────────────
+  if (currentView === 'detail') {{
+    if (!win.__stDetailPushed) {{
+      win.__stDetailPushed = true;
+      win.history.pushState({{ streamlitDetail: true }}, '');
+    }}
+  }} else {{
+    win.__stDetailPushed = false;
+  }}
+
+  if (!win.__stPopstateRegistered) {{
+    win.__stPopstateRegistered = true;
+    win.addEventListener('popstate', function() {{
+      var btns = doc.querySelectorAll('.stButton button');
+      for (var i = 0; i < btns.length; i++) {{
+        if (btns[i].textContent.includes('목록으로')) {{
+          btns[i].click();
+          return;
+        }}
+      }}
+    }});
+  }}
+}})();
 </script>
 """, height=0)
 
