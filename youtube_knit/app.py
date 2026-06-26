@@ -128,7 +128,8 @@ h1, h2, h3, .page-title {
   gap: 4px;
   height: 40px;
   overflow: hidden;
-  padding: 6px 10px 10px;
+  padding: 0 10px;
+  align-items: center;
   border: 1.5px solid var(--beige);
   border-top: none;
   border-radius: 0 0 18px 18px;
