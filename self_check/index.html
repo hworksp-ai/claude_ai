@@ -362,6 +362,13 @@ function saveState(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function setAnswer(qid, val){
+  const fresh = loadState();
+  const base = (fresh && fresh.answers) ? fresh.answers : state.answers;
+  state.answers = Object.assign({}, base, {[qid]: val});
+  saveState();
+}
+
 function answeredCount(){
   return Object.keys(state.answers).length;
 }
@@ -462,8 +469,7 @@ function renderSection(){
       b.textContent = v;
       b.setAttribute('aria-pressed', state.answers[q.id]===v ? 'true':'false');
       b.addEventListener('click', ()=>{
-        state.answers[q.id] = v;
-        saveState();
+        setAnswer(q.id, v);
         renderSection();
         renderTabs();
         renderTopProgress();
@@ -526,7 +532,11 @@ document.getElementById('resumeBtn').addEventListener('click', ()=>{
   }
   state.started = true;
   saveState();
-  showQuiz();
+  if(allComplete()){
+    showResults();
+  } else {
+    showQuiz();
+  }
 });
 document.getElementById('restartBtn').addEventListener('click', ()=>{
   if(confirm('저장된 응답을 모두 지우고 처음부터 다시 시작할까요?')){
@@ -700,17 +710,28 @@ function showResults(){
   renderResults();
 }
 
+window.addEventListener('storage', (e)=>{
+  if(e.key !== STORAGE_KEY || !e.newValue) return;
+  const fresh = loadState();
+  if(!fresh) return;
+  state.answers = fresh.answers;
+  renderTopProgress();
+  renderTabs();
+  if(!document.getElementById('view-quiz').classList.contains('hide')){
+    renderSection();
+  }
+  if(!document.getElementById('view-results').classList.contains('hide') && allComplete()){
+    renderResults();
+  }
+});
+
 (function init(){
   const saved = loadState();
   if(saved) state = Object.assign({answers:{},currentSection:0,consentGiven:false,started:false}, saved);
   renderTopProgress();
   renderTabs();
-  if(state.started){
-    showQuiz();
-  } else {
-    showView('intro');
-    renderIntro();
-  }
+  showView('intro');
+  renderIntro();
 })();
 </script>
 </body>
