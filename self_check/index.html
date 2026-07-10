@@ -136,7 +136,7 @@
 
   <div id="view-intro">
     <div class="resume-banner hide" id="resumeBanner">
-      <span>이전에 응답하던 기록이 브라우저에 저장되어 있어요.</span>
+      <span>이 창(탭)에 응답하던 기록이 남아있어요.</span>
       <span class="btn-row" style="margin:0;">
         <button class="btn sage" id="resumeBtn">이어서 하기</button>
         <button class="btn ghost" id="restartBtn">처음부터 다시</button>
@@ -168,7 +168,7 @@
       <h2>작성 방법</h2>
       <ul class="plain">
         <li>각 문항을 읽고, 본인에게 해당하는 정도를 0~4 중 하나를 선택하세요.</li>
-        <li>한 번에 끝내지 않아도 됩니다. 부담되면 섹션별로 나눠 답해도 괜찮아요(총 8개 섹션). 응답은 이 브라우저에 자동 저장됩니다.</li>
+        <li>한 번에 끝내지 않아도 됩니다. 부담되면 섹션별로 나눠 답해도 괜찮아요(총 8개 섹션). 응답은 새로고침해도 유지되지만, 이 창(탭)을 완전히 닫으면 삭제됩니다.</li>
         <li>정답이 없습니다. 깊이 고민하지 말고 첫 느낌대로 답하세요.</li>
         <li>섹션마다 응답하는 시점이 다릅니다(현재 / 어린 시절). 각 섹션의 안내를 확인하세요.</li>
         <li>모두 답한 뒤, 자동으로 채점되어 결과를 확인할 수 있습니다.</li>
@@ -221,7 +221,7 @@
 </div>
 
 <footer class="disclaimer">
-  이 도구는 의료적 진단 도구가 아닌 자기 이해를 위한 참고 자료입니다. 모든 응답은 이 브라우저에만 저장되며 외부로 전송되지 않습니다.
+  이 도구는 의료적 진단 도구가 아닌 자기 이해를 위한 참고 자료입니다. 모든 응답은 이 창(탭)에만 저장되며 외부로 전송되지 않고, 창을 닫으면 함께 삭제됩니다.
 </footer>
 
 <script>
@@ -353,19 +353,17 @@ let state = {answers:{}, currentSection:0, consentGiven:false, started:false};
 
 function loadState(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     if(raw) return JSON.parse(raw);
   }catch(e){}
   return null;
 }
 function saveState(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function setAnswer(qid, val){
-  const fresh = loadState();
-  const base = (fresh && fresh.answers) ? fresh.answers : state.answers;
-  state.answers = Object.assign({}, base, {[qid]: val});
+  state.answers[qid] = val;
   saveState();
 }
 
@@ -540,7 +538,7 @@ document.getElementById('resumeBtn').addEventListener('click', ()=>{
 });
 document.getElementById('restartBtn').addEventListener('click', ()=>{
   if(confirm('저장된 응답을 모두 지우고 처음부터 다시 시작할까요?')){
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
     state = {answers:{}, currentSection:0, consentGiven:false, started:false};
     renderIntro();
     renderTabs();
@@ -691,7 +689,7 @@ function renderResults(){
   });
   document.getElementById('retakeBtn').addEventListener('click', ()=>{
     if(confirm('모든 응답을 지우고 처음부터 다시 시작할까요?')){
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
       state = {answers:{}, currentSection:0, consentGiven:false, started:false};
       showView('intro');
       renderIntro();
@@ -709,21 +707,6 @@ function renderResults(){
 function showResults(){
   renderResults();
 }
-
-window.addEventListener('storage', (e)=>{
-  if(e.key !== STORAGE_KEY || !e.newValue) return;
-  const fresh = loadState();
-  if(!fresh) return;
-  state.answers = fresh.answers;
-  renderTopProgress();
-  renderTabs();
-  if(!document.getElementById('view-quiz').classList.contains('hide')){
-    renderSection();
-  }
-  if(!document.getElementById('view-results').classList.contains('hide') && allComplete()){
-    renderResults();
-  }
-});
 
 (function init(){
   const saved = loadState();
