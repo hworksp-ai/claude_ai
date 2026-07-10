@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>자기 이해를 위한 99문항 점검 도구</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#FAF6F2; --surface:#FFFFFF; --ink:#2E2620; --muted:#8A7A6D;
+    --line:#EAE0D5; --accent:#B5654A; --accent-soft:#F3DCD2;
+    --sage:#7C9473; --sage-soft:#DCE7D6; --amber:#C99A3D; --amber-soft:#F3E3C2;
+    --deep:#7A3B2C; --deep-soft:#EBD0C7;
+  }
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;line-height:1.55;}
+  .wrap{max-width:840px;margin:0 auto;padding:24px 18px 80px;}
+  header.top{position:sticky;top:0;background:rgba(250,246,242,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);z-index:50;}
+  .top-inner{max-width:840px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .brand{font-size:13px;letter-spacing:.5px;color:var(--accent);font-weight:700;}
+  .brand small{display:block;font-size:11px;color:var(--muted);font-weight:400;letter-spacing:.2px;}
+  .progress-pill{font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 12px;white-space:nowrap;}
+  .progress-track{height:4px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px;}
+  .progress-fill{height:100%;background:var(--accent);transition:width .25s ease;}
+
+  .tabs{display:flex;gap:4px;overflow-x:auto;padding:10px 18px 0;max-width:840px;margin:0 auto;}
+  .tab{flex:none;font-size:12px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;white-space:nowrap;}
+  .tab.done{color:var(--sage);border-color:var(--sage-soft);background:var(--sage-soft);}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tab .cnt{opacity:.75;font-size:10px;}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 22px 26px;margin-bottom:16px;}
+  h1{font-size:22px;margin-bottom:6px;}
+  h2{font-size:18px;margin-bottom:8px;}
+  .eyebrow{font-size:11px;letter-spacing:1.5px;color:var(--accent);font-weight:700;margin-bottom:8px;}
+  .muted{color:var(--muted);font-size:13px;}
+  .lead{font-size:14.5px;margin:10px 0;}
+  .notice{background:var(--accent-soft);border-radius:12px;padding:14px 16px;font-size:13px;margin:14px 0;}
+  .notice.dark{background:var(--ink);color:#fff;}
+  .notice.dark .muted{color:#d8c9c0;}
+  .scale-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0;}
+  .scale-box{border:1px solid var(--line);border-radius:12px;text-align:center;padding:10px 4px;background:var(--bg);}
+  .scale-box b{display:block;font-size:16px;color:var(--accent);}
+  .scale-box span{font-size:11px;color:var(--muted);}
+  ul.plain{margin:8px 0 0 18px;font-size:13.5px;}
+  ul.plain li{margin-bottom:4px;}
+  .area-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-top:10px;font-size:13px;}
+  .area-grid b{color:var(--accent);}
+  label.consent{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:16px;cursor:pointer;}
+  label.consent input{margin-top:3px;width:18px;height:18px;flex:none;}
+  .btn{appearance:none;border:none;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;}
+  .btn:disabled{background:#D8CFC6;color:#fff;cursor:not-allowed;}
+  .btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+  .btn.sage{background:var(--sage);}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  .resume-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--sage-soft);border:1px solid var(--sage);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;flex-wrap:wrap;}
+
+  .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .sec-tag{display:inline-block;background:var(--ink);color:#fff;font-size:11px;padding:2px 9px;border-radius:8px;margin-right:8px;}
+  .sec-count{font-size:12px;color:var(--muted);}
+  .legend{display:flex;gap:6px;margin:14px 0;font-size:11px;color:var(--muted);}
+  .legend span{flex:1;text-align:center;border-bottom:2px solid var(--line);padding-bottom:4px;}
+
+  .q{border-top:1px solid var(--line);padding:16px 0;}
+  .q:first-of-type{border-top:none;}
+  .q-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .q-num{font-size:12px;color:var(--accent);font-weight:700;}
+  .q-tag{font-size:10px;background:var(--amber-soft);color:#7a5c14;padding:1px 8px;border-radius:8px;}
+  .q-text{font-size:14.5px;margin-bottom:10px;}
+  .opts{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+  .opt{border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 0;font-size:14px;color:var(--muted);cursor:pointer;font-weight:600;}
+  .opt:hover{border-color:var(--accent);}
+  .opt.selected{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .q.unanswered .q-text{color:var(--deep);}
+
+  .nav-btns{display:flex;justify-content:space-between;margin-top:22px;gap:10px;}
+
+  .gauge{position:relative;height:30px;border-radius:8px;overflow:hidden;display:flex;margin:14px 0 4px;}
+  .gauge div{height:100%;}
+  .g0{background:#CFE0EA;} .g1{background:var(--amber-soft);} .g2{background:#D8D3CC;} .g3{background:var(--deep-soft);}
+  .gauge-marker{position:absolute;top:-8px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid var(--ink);transform:translateX(-8px);}
+  .gauge-labels{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);}
+
+  .bar-row{display:grid;grid-template-columns:120px 1fr 46px;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;}
+  .bar-track{background:var(--line);border-radius:8px;height:16px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--accent);border-radius:8px 0 0 8px;}
+  .bar-fill.sage{background:var(--sage);}
+  .bar-fill.neutral{background:#9BA6AE;}
+
+  .matrix-box{position:relative;width:100%;aspect-ratio:1.4/1;border:1px solid var(--line);border-radius:14px;background:
+    linear-gradient(to right, var(--bg) 50%, var(--accent-soft) 50%),
+    linear-gradient(to bottom, var(--accent-soft) 50%, var(--bg) 50%);
+    background-blend-mode:multiply;overflow:hidden;margin:14px 0;}
+  .matrix-box::before,.matrix-box::after{content:'';position:absolute;background:var(--line);}
+  .matrix-box::before{left:0;right:0;top:50%;height:1px;}
+  .matrix-box::after{top:0;bottom:0;left:50%;width:1px;}
+  .matrix-dot{position:absolute;width:14px;height:14px;background:var(--ink);border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 4px rgba(0,0,0,.3);}
+  .matrix-axis-label{position:absolute;font-size:10.5px;color:var(--muted);}
+
+  .quad-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px;}
+  .quad-grid div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;}
+  .quad-grid b{display:block;font-size:12.5px;margin-bottom:2px;}
+
+  .pattern{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
+  .pattern .chip{flex:none;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+  .chip.on{background:var(--sage-soft);color:#2c4a26;}
+  .chip.off{background:var(--line);color:var(--muted);}
+
+  .axis{margin-bottom:16px;}
+  .axis-track{position:relative;height:8px;background:var(--line);border-radius:4px;margin:8px 0 6px;}
+  .axis-fill{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:4px;}
+  .axis-dot{position:absolute;top:-4px;width:16px;height:16px;background:var(--ink);border:2px solid #fff;border-radius:50%;transform:translateX(-50%);}
+  .axis-labels{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);}
+
+  footer.disclaimer{max-width:840px;margin:0 auto;padding:0 18px 40px;font-size:11.5px;color:var(--muted);text-align:center;}
+  .hide{display:none !important;}
+  @media (max-width:520px){
+    .opts{grid-template-columns:repeat(5,1fr);}
+    .opt{font-size:13px;padding:8px 0;}
+    .bar-row{grid-template-columns:80px 1fr 40px;font-size:11.5px;}
+    .area-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">SELF-CHECK · 99 ITEMS<small>자기 이해를 위한 99문항 점검 도구</small></div>
+    <div class="progress-pill" id="progressPill">0 / 99 응답</div>
+  </div>
+  <div class="progress-track" style="max-width:840px;margin:0 auto;"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<div class="wrap">
+
+  <div id="view-intro">
+    <div class="resume-banner hide" id="resumeBanner">
+      <span>이전에 응답하던 기록이 브라우저에 저장되어 있어요.</span>
+      <span class="btn-row" style="margin:0;">
+        <button class="btn sage" id="resumeBtn">이어서 하기</button>
+        <button class="btn ghost" id="restartBtn">처음부터 다시</button>
+      </span>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">SELF-CHECK · 99 ITEMS</div>
+      <h1>자기 이해를 위한 99문항 점검 도구</h1>
+      <p class="lead">
+        자꾸 까먹고, 미루고, 끝까지 못 끝내는 그 패턴. 의지 문제일까, 아니면 내 뇌가 작동하는 방식일까.<br>
+        5분과 30분의 차이가 잘 안 느껴지는 사람, 관심 있는 일엔 시간 가는 줄 모르는 사람, 거절당하면 며칠을 못 자는 사람 —
+        혹시 이게 다 연결돼 있을지도 모릅니다.
+      </p>
+      <div class="notice">
+        이 도구는 본인의 <b>주의·집중, 활동성, 감정 반응</b> 등의 패턴을 살펴보는 자기 이해 도구입니다. 의료적 진단이 아니며,
+        결과로 본인을 어떤 범주에 가두지 마세요. 일상에 어려움이 크다면 정신건강의학과 또는 임상심리 전문가와 상담을 권합니다.
+      </div>
+
+      <h2 style="margin-top:20px;">응답 척도</h2>
+      <div class="scale-grid">
+        <div class="scale-box"><b>0</b><span>전혀 없음</span></div>
+        <div class="scale-box"><b>1</b><span>거의 없음</span></div>
+        <div class="scale-box"><b>2</b><span>가끔</span></div>
+        <div class="scale-box"><b>3</b><span>자주</span></div>
+        <div class="scale-box"><b>4</b><span>매우 자주</span></div>
+      </div>
+
+      <h2>작성 방법</h2>
+      <ul class="plain">
+        <li>각 문항을 읽고, 본인에게 해당하는 정도를 0~4 중 하나를 선택하세요.</li>
+        <li>한 번에 끝내지 않아도 됩니다. 부담되면 섹션별로 나눠 답해도 괜찮아요(총 8개 섹션). 응답은 이 브라우저에 자동 저장됩니다.</li>
+        <li>정답이 없습니다. 깊이 고민하지 말고 첫 느낌대로 답하세요.</li>
+        <li>섹션마다 응답하는 시점이 다릅니다(현재 / 어린 시절). 각 섹션의 안내를 확인하세요.</li>
+        <li>모두 답한 뒤, 자동으로 채점되어 결과를 확인할 수 있습니다.</li>
+      </ul>
+      <p class="muted" style="margin-top:10px;">예상 소요 시간: 응답 약 20~30분 · 결과는 즉시 자동 계산됩니다.</p>
+
+      <h2 style="margin-top:20px;">이 도구는 어떤 영역들을 살피나요?</h2>
+      <div class="area-grid">
+        <div><b>A</b> 주의·집중 (현재) — 집중 유지, 마무리하는 패턴</div>
+        <div><b>B</b> 활동성·즉흥성 (현재) — 충동성, 즉흥적 결정</div>
+        <div><b>C</b> 어린 시절의 나 — 패턴의 시작점</div>
+        <div><b>D</b> 일상에 미치는 영향 — 시간·재정·관계·자기 인식</div>
+        <div><b>E</b> 구체적 행동 빈도 — 실제 빈도</div>
+        <div><b>F</b> 내적 양상 — 시간 감각, 몰입, 감정 반응</div>
+        <div><b>G</b> 강점과 능률 — 잘 작동하는 영역</div>
+        <div><b>H</b> 환경·작업 스타일 — 능률이 오르는 환경</div>
+      </div>
+
+      <label class="consent">
+        <input type="checkbox" id="consentCheck">
+        <span><b>시작 전 동의</b><br>이 결과는 진단이 아니며, 자기 진단·자기 라벨링에 사용하지 않겠습니다. 자기 이해와 성찰의 도구로만 활용하겠습니다.</span>
+      </label>
+
+      <div class="btn-row">
+        <button class="btn" id="startBtn" disabled>응답 시작하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-quiz" class="hide">
+    <div class="card">
+      <div class="sec-head">
+        <div><span class="sec-tag" id="secTagLabel">A</span><strong id="secTitle"></strong></div>
+        <span class="sec-count" id="secCount"></span>
+      </div>
+      <p class="muted" id="secDesc" style="margin-top:8px;"></p>
+      <div class="legend">
+        <span>0 전혀 없음</span><span>1 거의 없음</span><span>2 가끔</span><span>3 자주</span><span>4 매우 자주</span>
+      </div>
+      <div id="qList"></div>
+      <div class="nav-btns">
+        <button class="btn ghost" id="prevBtn">← 이전 섹션</button>
+        <button class="btn" id="nextBtn">다음 섹션 →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-results" class="hide"></div>
+
+</div>
+
+<footer class="disclaimer">
+  이 도구는 의료적 진단 도구가 아닌 자기 이해를 위한 참고 자료입니다. 모든 응답은 이 브라우저에만 저장되며 외부로 전송되지 않습니다.
+</footer>
+
+<script>
+const QUESTIONS = [
+{id:1,sec:'A',text:'일을 할 때, 마무리하는 마지막 단계에서 세부사항을 놓쳐 끝맺기가 어렵다.'},
+{id:2,sec:'A',text:'체계가 필요한 일을 할 때 순서대로 진행하는 것이 어렵다.'},
+{id:3,sec:'A',text:'약속이나 해야 할 일을 잊어버리는 경우가 있다.'},
+{id:4,sec:'A',text:'많은 생각을 해야 하는 일을 미루거나 회피한다.'},
+{id:5,sec:'A',text:'개인 생활이나 직장/학업에서 부주의한 실수를 한다.'},
+{id:6,sec:'A',text:'따분하거나 어려운 일을 할 때 주의를 유지하기가 어렵다.'},
+{id:7,sec:'A',text:'누군가 직접 말을 거는 데도 듣지 않는 것처럼 보인다.'},
+{id:8,sec:'A',text:'물건(열쇠, 지갑, 휴대폰 등)을 어디 두었는지 자주 찾는다.'},
+{id:9,sec:'A',text:'주위의 활동이나 소음에 쉽게 산만해진다.'},
+{id:10,sec:'A',text:'책이나 글을 읽을 때 같은 줄을 반복해서 읽거나 내용이 머리에 들어오지 않는다.'},
+{id:11,sec:'A',text:'여러 단계를 거쳐야 하는 지시사항을 따라가기가 어렵다.'},
+{id:12,sec:'A',text:'관심 있는 일에는 시간 가는 줄 모르고 몰입하지만, 그 외에는 집중이 어렵다.'},
+{id:13,sec:'A',text:'대화 중에 상대의 말을 놓치거나 다른 생각으로 빠진다.'},
+{id:14,sec:'A',text:'시작한 일을 끝맺지 못하고 새로운 일로 옮겨간다.'},
+
+{id:15,sec:'B',text:'오랜 시간 앉아 있어야 할 때 손발을 가만두지 못하고 꼼지락거린다.'},
+{id:16,sec:'B',text:'무언가에 떠밀리듯 과도하게 활발해지거나 무언가를 해야만 하는 느낌을 받는다.'},
+{id:17,sec:'B',text:'회의나 가만히 앉아 있어야 할 자리에서 자리를 떠난 적이 있다.'},
+{id:18,sec:'B',text:'여유로워야 할 때조차 가만히 있지 못하고 들떠 있다고 느낀다.'},
+{id:19,sec:'B',text:'혼자 있을 때 편안히 쉬는 것이 어렵다.'},
+{id:20,sec:'B',text:'사회적 상황에서 내가 너무 많이 말하고 있다고 느낀다.'},
+{id:21,sec:'B',text:'대화 중 상대가 말을 마치기 전에 끼어들거나 답을 해버린다.'},
+{id:22,sec:'B',text:'차례를 기다려야 하는 상황에서 어려움을 느낀다.'},
+{id:23,sec:'B',text:'다른 사람이 바쁘거나 집중하고 있을 때 방해한다.'},
+{id:24,sec:'B',text:'깊이 생각하지 않고 충동적으로 결정하거나 말을 내뱉는다.'},
+{id:25,sec:'B',text:'계획 없이 충동적으로 소비를 하거나 일을 벌인다.'},
+
+{id:26,sec:'C',text:'어린 시절(초등학생 무렵), 가만히 있지 못하고 활동적이라는 말을 들었다.'},
+{id:27,sec:'C',text:'어린 시절, 수업 시간에 집중하지 못하거나 자주 멍해진다는 평을 받았다.'},
+{id:28,sec:'C',text:'어린 시절, 충동적으로 행동해서 곤란해진 적이 있다.'},
+{id:29,sec:'C',text:'어린 시절, 화를 잘 내거나 감정 폭발이 잦았다.'},
+{id:30,sec:'C',text:'어린 시절, 학교 생활에 적응하기 어렵거나 행동 문제로 지적받았다.'},
+{id:31,sec:'C',text:'어린 시절, 학습 능력에 비해 성적이 따라주지 않았다.'},
+{id:32,sec:'C',text:'어린 시절, 친구들과 어울리는 데 어려움이 있었거나 인기가 없다고 느꼈다.'},
+{id:33,sec:'C',text:'어린 시절, 권위(선생님·부모)에 반항적이거나 협조하지 않는다는 말을 들었다.'},
+{id:34,sec:'C',text:'어린 시절, 자주 우울하거나 자신감이 부족하다고 느꼈다.'},
+{id:35,sec:'C',text:'어린 시절, 떼를 잘 쓰거나 성질이 급하다는 말을 들었다.'},
+{id:36,sec:'C',text:'어린 시절, 백일몽을 꾸거나 멍 때리는 일이 잦았다.'},
+{id:37,sec:'C',text:'어린 시절, 부주의한 실수가 많아 자주 지적받았다.'},
+{id:38,sec:'C',text:'어린 시절, 또래 아이들에 비해 산만하거나 시끄럽다는 말을 들었다.'},
+
+{id:39,sec:'D',text:'시간 관리가 어려워 자주 늦거나 마감을 놓친다.'},
+{id:40,sec:'D',text:'재정 관리(공과금 납부, 예산, 카드 관리)에서 어려움을 겪는다.'},
+{id:41,sec:'D',text:'집안일이나 자기 관리(빨래, 설거지, 정리)가 자주 밀린다.'},
+{id:42,sec:'D',text:'수면 패턴이 불규칙하거나 잠들기·일어나기가 어렵다.'},
+{id:43,sec:'D',text:'식사를 거르거나 폭식하는 등 식습관이 불규칙하다.'},
+{id:44,sec:'D',text:'감정 기복이 크거나, 작은 일에 과도하게 반응한다.'},
+{id:45,sec:'D',text:'거절을 어려워하거나, 거절당했을 때 강한 좌절감을 느낀다.'},
+{id:46,sec:'D',text:'시작은 쉽지만 끝맺지 못한 프로젝트/취미가 여러 개 쌓여 있다.'},
+{id:47,sec:'D',text:'직장이나 학업에서 능력에 비해 성과가 따라주지 않는다고 느낀다.'},
+{id:48,sec:'D',text:'인간관계에서 충동적인 말이나 행동으로 후회한 적이 있다.'},
+{id:49,sec:'D',text:'자극을 추구하거나 위험한 행동(과속·과음·과소비)에 끌린다.'},
+{id:50,sec:'D',text:'자기 자신에 대해 "게으르다", "의지가 약하다"고 자책하는 일이 많다.'},
+{id:51,sec:'D',text:'같은 또래·동료와 비교했을 때, 일상의 기본 일들이 유독 더 힘들게 느껴진다.'},
+{id:52,sec:'D',text:'내가 가진 능력에 비해 결과가 따라주지 않아 답답함을 자주 느낀다.'},
+
+{id:53,sec:'E',text:'지난 한 달간, 휴대폰·열쇠·지갑을 찾느라 5분 이상 시간을 쓴 일이 있었다.'},
+{id:54,sec:'E',text:'현재 끝맺지 못하고 중단된 책·드라마·취미 프로젝트가 3개 이상 쌓여 있다.'},
+{id:55,sec:'E',text:'약속 시간에 늦거나, 도착 시간을 잘못 계산해 허둥댄다.'},
+{id:56,sec:'E',text:'같은 자리에 30분 이상 차분히 앉아 있기가 어렵다.'},
+{id:57,sec:'E',text:'하루를 마칠 때, 계획했던 일의 절반 이상을 못 끝낸다.'},
+{id:58,sec:'E',text:'한 번에 여러 탭(브라우저·앱)을 열어두고 닫지 못한 채 쌓아둔다.'},
+{id:59,sec:'E',text:'메시지·이메일에 답장을 미루다가 결국 잊어버린 일이 있다.'},
+{id:60,sec:'E',text:'하던 일을 마무리하지 않고 갑자기 다른 일로 옮겨간다.'},
+{id:61,sec:'E',text:'책상이나 방이 정리되지 않은 상태로 일주일 이상 둔 적이 있다.'},
+{id:62,sec:'E',text:'계획표를 만들어도 그날 안에 흐트러져 따라가지 못한다.'},
+{id:63,sec:'E',text:'약속을 깜빡해 다른 사람에게 사과한 일이 최근에 있었다.'},
+{id:64,sec:'E',text:'같은 실수를 반복해서 자기 자신에게 화가 난 일이 있다.'},
+{id:65,sec:'E',text:'"지금 막 하려던 참인데"라는 말을 자주 한다.'},
+{id:66,sec:'E',text:'하루 중 "왜 이걸 하고 있지?" 하는 순간이 자주 있다.'},
+
+{id:67,sec:'F',tag:'시간 감각',text:'5분과 30분의 체감 차이를 잘 못 느낀다(시간이 너무 빨리 가거나 너무 느리게 간다).'},
+{id:68,sec:'F',tag:'시간 감각',text:'약속 시간에 맞춰 출발 준비를 시작하는 타이밍을 잘 못 잡는다.'},
+{id:69,sec:'F',tag:'시간 감각',text:'"지금 당장"과 "나중"의 두 시제만 있는 것처럼 느껴진다.'},
+{id:70,sec:'F',tag:'몰입',text:'관심 있는 일에는 식사·화장실·시간 가는 줄 모르고 몰입한다.'},
+{id:71,sec:'F',tag:'몰입',text:'한 번 몰입하면 외부 자극(누가 부르는 소리 등)이 잘 들리지 않는다.'},
+{id:72,sec:'F',tag:'거절민감성',text:'비판이나 거절에 신체적 통증처럼 느껴질 만큼 강하게 반응한다.'},
+{id:73,sec:'F',tag:'거절민감성',text:'누군가 나에게 화났을지도 모른다는 생각만으로도 며칠 동안 괴롭다.'},
+{id:74,sec:'F',tag:'자극추구',text:'위기·마감·응급 상황에서 오히려 평소보다 집중이 더 잘 된다.'},
+{id:75,sec:'F',tag:'감정조절',text:'감정이 0에서 100으로 빠르게 치솟고, 또 빠르게 가라앉는다.'},
+{id:76,sec:'F',tag:'감정조절',text:'같은 일도 컨디션에 따라 의욕이 극단적으로 다르게 느껴진다.'},
+{id:77,sec:'F',tag:'작업기억',text:'방에 들어와서 왜 들어왔는지 잊거나, 하려던 말을 잊는 일이 있다.'},
+{id:78,sec:'F',tag:'실행기능',text:'해야 할 일을 알면서도 "시작" 자체가 안 된다(의지의 문제가 아닌 멈춤).'},
+{id:79,sec:'F',tag:'실행기능',text:'쉬운 일과 어려운 일 사이의 우선순위 판단이 잘 안 된다.'},
+
+{id:80,sec:'G',text:'위기 상황·마감·새로운 일에서 남들보다 잘 해낸다.'},
+{id:81,sec:'G',text:'여러 일을 동시에 떠올리고 의외의 것들을 연결 짓는 데 강하다.'},
+{id:82,sec:'G',text:'한 번 빠지면 누구보다 깊이 파고들어 전문가 수준에 도달하기도 한다.'},
+{id:83,sec:'G',text:'익숙한 일보다 새로운 자극이나 변화가 있는 일에서 더 능률이 오른다.'},
+{id:84,sec:'G',text:'평소엔 산만해 보여도, 진짜 중요한 순간에 직관적으로 핵심을 파악한다.'},
+{id:85,sec:'G',text:'관심 있는 분야에서는 같은 시간에 남들보다 훨씬 많은 양을 흡수한다.'},
+{id:86,sec:'G',text:'예상치 못한 문제나 응급 상황에서 빠르게 적응하고 대처한다.'},
+{id:87,sec:'G',text:'창의적인 아이디어가 갑자기 떠오르는 경우가 많다.'},
+{id:88,sec:'G',text:'다양한 관심사를 가지고 있어, 여러 분야의 이야기를 할 수 있다.'},
+{id:89,sec:'G',text:'강한 호기심이 새로운 것을 배우는 동력이 된다.'},
+{id:90,sec:'G',text:'에너지·열정의 양이 평균보다 높다고 느낀다.'},
+{id:91,sec:'G',text:'"평범하지 않은" 시각으로 사물을 보는 편이다.'},
+
+{id:92,sec:'H',tag:'자극+',text:'변화와 자극이 많은 환경에서 능률이 더 오른다.'},
+{id:93,sec:'H',tag:'자극−',text:'예측 가능하고 일정한 환경에서 마음이 편하고 일이 잘된다.'},
+{id:94,sec:'H',tag:'구조+',text:'내가 일의 방식과 순서를 자유롭게 정할 수 있을 때 더 잘 해낸다.'},
+{id:95,sec:'H',tag:'구조−',text:'명확한 절차·규칙·매뉴얼이 있는 일이 마음 편하다.'},
+{id:96,sec:'H',tag:'시간+',text:'단기간에 결과가 나오거나 마감이 있는 일에서 동기가 살아난다.'},
+{id:97,sec:'H',tag:'시간−',text:'장기간 꾸준히 같은 일을 이어가는 데서 안정감을 느낀다.'},
+{id:98,sec:'H',tag:'협업+',text:'사람들과 함께 작업할 때 더 활기가 생기고 능률이 오른다.'},
+{id:99,sec:'H',tag:'협업−',text:'혼자만의 시간과 공간에서 더 깊이 몰입할 수 있다.'},
+];
+
+const SECTION_ORDER = ['A','B','C','D','E','F','G','H'];
+const SECTION_META = {
+  A:{title:'주의·집중 (현재)',desc:'지금의 나는 어떤가요? 최근 6개월간을 떠올리며 응답해주세요.',max:56},
+  B:{title:'활동성·즉흥성 (현재)',desc:'지금의 나는 어떤가요? 최근 6개월간을 떠올리며 응답해주세요.',max:44},
+  C:{title:'어린 시절의 나',desc:'12세 이전의 나를 떠올려보세요. 지금의 패턴이 어디서 시작되었는지 살피는 부분입니다.',max:52},
+  D:{title:'일상에 미치는 영향',desc:'지금 본인의 일상에서 어떻게 느껴지는지 응답해주세요.',max:56},
+  E:{title:'구체적 행동 빈도',desc:'"이런 적이 있다"가 아니라 "얼마나 자주 있는가"로 살펴봅니다.',max:56},
+  F:{title:'내적 양상',desc:'시간 감각, 몰입, 감정 반응 등 잘 드러나지 않는 내면의 패턴입니다.',max:52},
+  G:{title:'강점과 능률',desc:'약점만이 아니라, 본인이 잘 작동하는 영역도 함께 살핍니다.',max:48},
+  H:{title:'환경·작업 스타일',desc:'어떤 환경에서 능률이 오르는지를 살핍니다. 점수가 아니라 본인의 작업 스타일 프로파일을 만드는 부분입니다.',max:null},
+};
+const QBY_SEC = {};
+SECTION_ORDER.forEach(s=>QBY_SEC[s]=QUESTIONS.filter(q=>q.sec===s));
+
+const STORAGE_KEY = 'selfcheck99_v1';
+let state = {answers:{}, currentSection:0, consentGiven:false, started:false};
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function answeredCount(){
+  return Object.keys(state.answers).length;
+}
+function sectionAnsweredCount(sec){
+  return QBY_SEC[sec].filter(q=>state.answers[q.id]!==undefined).length;
+}
+function sectionComplete(sec){
+  return sectionAnsweredCount(sec) === QBY_SEC[sec].length;
+}
+function allComplete(){
+  return answeredCount() === QUESTIONS.length;
+}
+
+function renderTopProgress(){
+  const total = QUESTIONS.length;
+  const done = answeredCount();
+  document.getElementById('progressPill').textContent = done + ' / ' + total + ' 응답';
+  document.getElementById('progressFill').style.width = (done/total*100) + '%';
+}
+
+function renderTabs(){
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  SECTION_ORDER.forEach((sec, idx)=>{
+    const btn = document.createElement('button');
+    const cnt = sectionAnsweredCount(sec);
+    const tot = QBY_SEC[sec].length;
+    btn.className = 'tab' + (sectionComplete(sec) ? ' done':'') + (state.started && idx===state.currentSection ? ' active':'');
+    btn.innerHTML = sec + ' <span class="cnt">' + cnt + '/' + tot + '</span>';
+    btn.addEventListener('click', ()=>{
+      state.started = true;
+      state.currentSection = idx;
+      saveState();
+      showQuiz();
+    });
+    tabsEl.appendChild(btn);
+  });
+  const resultsBtn = document.createElement('button');
+  resultsBtn.className = 'tab' + (allComplete() ? ' done':'');
+  resultsBtn.textContent = '결과';
+  resultsBtn.disabled = !allComplete();
+  if(!allComplete()) resultsBtn.style.opacity = '0.4';
+  resultsBtn.addEventListener('click', ()=>{ if(allComplete()) showResults(); });
+  tabsEl.appendChild(resultsBtn);
+}
+
+function showView(name){
+  ['intro','quiz','results'].forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('hide', v!==name);
+  });
+}
+
+function renderIntro(){
+  const saved = loadState();
+  const banner = document.getElementById('resumeBanner');
+  if(saved && Object.keys(saved.answers||{}).length>0){
+    banner.classList.remove('hide');
+  } else {
+    banner.classList.add('hide');
+  }
+  const consentCheck = document.getElementById('consentCheck');
+  consentCheck.checked = state.consentGiven;
+  document.getElementById('startBtn').disabled = !consentCheck.checked;
+}
+
+function renderSection(){
+  const sec = SECTION_ORDER[state.currentSection];
+  const meta = SECTION_META[sec];
+  document.getElementById('secTagLabel').textContent = '섹션 ' + sec;
+  document.getElementById('secTitle').textContent = meta.title;
+  document.getElementById('secDesc').textContent = meta.desc;
+  document.getElementById('secCount').textContent = sectionAnsweredCount(sec) + ' / ' + QBY_SEC[sec].length + '문항';
+
+  const qList = document.getElementById('qList');
+  qList.innerHTML = '';
+  QBY_SEC[sec].forEach(q=>{
+    const div = document.createElement('div');
+    const answered = state.answers[q.id] !== undefined;
+    div.className = 'q' + (answered ? '' : ' unanswered');
+    div.dataset.id = q.id;
+
+    const head = document.createElement('div');
+    head.className = 'q-head';
+    head.innerHTML = '<span class="q-num">Q' + q.id + '</span>' + (q.tag ? '<span class="q-tag">'+q.tag+'</span>' : '');
+    div.appendChild(head);
+
+    const p = document.createElement('p');
+    p.className = 'q-text';
+    p.textContent = q.text;
+    div.appendChild(p);
+
+    const opts = document.createElement('div');
+    opts.className = 'opts';
+    opts.setAttribute('role','radiogroup');
+    for(let v=0; v<=4; v++){
+      const b = document.createElement('button');
+      b.className = 'opt' + (state.answers[q.id]===v ? ' selected':'');
+      b.textContent = v;
+      b.setAttribute('aria-pressed', state.answers[q.id]===v ? 'true':'false');
+      b.addEventListener('click', ()=>{
+        state.answers[q.id] = v;
+        saveState();
+        renderSection();
+        renderTabs();
+        renderTopProgress();
+      });
+      opts.appendChild(b);
+    }
+    div.appendChild(opts);
+    qList.appendChild(div);
+  });
+
+  document.getElementById('prevBtn').disabled = state.currentSection===0;
+  const isLast = state.currentSection === SECTION_ORDER.length-1;
+  document.getElementById('nextBtn').textContent = isLast ? '결과 보기 →' : '다음 섹션 →';
+}
+
+function showQuiz(){
+  showView('quiz');
+  renderSection();
+  renderTabs();
+  window.scrollTo({top:0, behavior:'instant' in window ? 'instant':'auto'});
+}
+
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  if(state.currentSection>0){
+    state.currentSection--;
+    saveState();
+    showQuiz();
+  }
+});
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  const isLast = state.currentSection === SECTION_ORDER.length-1;
+  if(isLast){
+    if(allComplete()){ showResults(); }
+    else {
+      const sec = SECTION_ORDER[state.currentSection];
+      alert('아직 응답하지 않은 문항이 있어요. 상단 탭에서 남은 섹션을 확인해주세요.');
+    }
+  } else {
+    state.currentSection++;
+    saveState();
+    showQuiz();
+  }
+});
+
+document.getElementById('consentCheck').addEventListener('change', (e)=>{
+  state.consentGiven = e.target.checked;
+  document.getElementById('startBtn').disabled = !state.consentGiven;
+  saveState();
+});
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  state.started = true;
+  saveState();
+  showQuiz();
+});
+document.getElementById('resumeBtn').addEventListener('click', ()=>{
+  const saved = loadState();
+  if(saved){
+    state = Object.assign({answers:{},currentSection:0,consentGiven:false,started:false}, saved);
+    state.consentGiven = true;
+  }
+  state.started = true;
+  saveState();
+  showQuiz();
+});
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  if(confirm('저장된 응답을 모두 지우고 처음부터 다시 시작할까요?')){
+    localStorage.removeItem(STORAGE_KEY);
+    state = {answers:{}, currentSection:0, consentGiven:false, started:false};
+    renderIntro();
+    renderTabs();
+    renderTopProgress();
+  }
+});
+
+function sum(sec){
+  return QBY_SEC[sec].reduce((acc,q)=>acc+(state.answers[q.id]||0),0);
+}
+function pct(sec){
+  const meta = SECTION_META[sec];
+  if(!meta.max) return null;
+  return sum(sec)/meta.max*100;
+}
+
+function bandInfo(total){
+  if(total<=91) return {label:'낮음', title:'두드러진 패턴은 보이지 않습니다', text:'전반적으로 살핀 영역들의 특성이 일상에서 두드러지게 나타나지는 않습니다. 누구나 가끔 산만해지거나 깜빡하는 일이 있으니, 이 정도는 일반적인 범위에 가깝습니다. 다만 특정 영역(예: 일상 영향 D, 내적 양상 F)에서만 점수가 높다면, 그 부분은 별도로 살펴볼 가치가 있습니다.'};
+  if(total<=182) return {label:'중간', title:'일부 영역에서 패턴이 나타납니다', text:'일부 영역에서 살핀 특성이 나타나고 있습니다. 다만 점수만으로는 이것이 어디서 비롯된 것인지 — 신경다양성에서 오는 것인지, 스트레스·수면 부족·번아웃·우울 등 다른 요인에서 오는 것인지 — 구분할 수 없습니다. 어린 시절(C)부터 패턴이 이어지고, 일상(D)에 영향이 있으며, 내적 양상(F)이 함께 높다면 전문가와 이야기 나눠볼 만합니다.'};
+  if(total<=273) return {label:'높음', title:'여러 영역에서 뚜렷한 패턴이 보입니다', text:'여러 영역에서 살핀 특성이 뚜렷하게 나타나고 있습니다. 특히 어린 시절(C)부터 비슷한 양상이 있었고 현재 일상(D)에도 영향을 주고 있다면, 전문가 상담을 받아볼 만한 수준입니다. 이런 양상은 다양한 요인(우울·불안·수면 문제·신경다양성·만성 스트레스·트라우마 등)에서 비롯될 수 있어, 정신건강의학과 또는 임상심리 전문가의 종합적인 평가가 도움이 됩니다.'};
+  return {label:'매우 높음', title:'대부분 영역에서 강한 패턴이 보입니다', text:'대부분의 영역에서 살핀 특성이 강하게 나타나고 있으며, 일상에도 상당한 영향을 주고 있는 것으로 보입니다. 어린 시절부터 현재까지 일관된 패턴이 있다면, 전문가 평가를 받아보시길 권합니다. 점수가 매우 높은 경우 단일한 원인이 아니라 여러 요인이 함께 작용하고 있을 가능성이 높습니다. 자가 판단보다는 전문의 진료를 통한 정확한 평가가 중요합니다.'};
+}
+
+function matrixClass(a,b){
+  if(a<40 && b<40) return {label:'두드러진 양상 없음', desc:'두 영역 모두 두드러지지 않는 패턴입니다.'};
+  if(a-b>=15) return {label:'주의·집중 우세형', desc:'산만함과 집중 어려움이 두드러지지만, 외적 활동성·충동성은 낮은 패턴입니다.'};
+  if(b-a>=15) return {label:'활동성·즉흥성 우세형', desc:'가만히 못 있고 충동적인 양상이 두드러지지만, 주의·집중 어려움은 적은 패턴입니다.'};
+  return {label:'혼합형', desc:'주의·집중과 활동성 모두 두드러지는 패턴입니다 (성인에서 가장 흔함).'};
+}
+
+function fmt(n){ return Math.round(n*10)/10; }
+
+function renderResults(){
+  const A=pct('A'),B=pct('B'),C=pct('C'),D=pct('D'),E=pct('E'),F=pct('F'),G=pct('G');
+  const total = sum('A')+sum('B')+sum('C')+sum('D')+sum('E')+sum('F')+sum('G');
+  const maxTotal = 56+44+52+56+56+52+48;
+  const band = bandInfo(total);
+  const mtx = matrixClass(A,B);
+  const avgAB = (A+B)/2;
+  const p1 = C>=50 && (avgAB>=50 || D>=50);
+  const p2 = D>=50;
+  const p3 = F>=50;
+  const p4 = G>=50 && avgAB>=50;
+  const burnoutNote = G<30 && (A>=50 || B>=50 || D>=50);
+
+  const axes = [
+    {label:'변화·자극', left:'안정·예측', right:'변화·자극', val:(state.answers[92]||0)-(state.answers[93]||0)},
+    {label:'구조·자율', left:'구조·매뉴얼', right:'자율·재량', val:(state.answers[94]||0)-(state.answers[95]||0)},
+    {label:'시간 스타일', left:'장기·꾸준', right:'단기·마감', val:(state.answers[96]||0)-(state.answers[97]||0)},
+    {label:'협업 스타일', left:'단독 작업', right:'협업·함께', val:(state.answers[98]||0)-(state.answers[99]||0)},
+  ];
+
+  const secBars = [
+    {k:'A',label:'주의·집중',val:A,cls:''},
+    {k:'B',label:'활동성·즉흥성',val:B,cls:''},
+    {k:'C',label:'어린 시절',val:C,cls:''},
+    {k:'D',label:'일상 영향',val:D,cls:''},
+    {k:'E',label:'행동 빈도',val:E,cls:''},
+    {k:'F',label:'내적 양상',val:F,cls:''},
+    {k:'G',label:'강점과 능률',val:G,cls:'sage'},
+  ];
+
+  const gaugePos = Math.min(100, total/maxTotal*100);
+
+  const el = document.getElementById('view-results');
+  el.innerHTML = `
+    <div class="card">
+      <div class="eyebrow">RESULT</div>
+      <h1>결과 읽기</h1>
+      <div class="notice">점수가 높다고 해서 어떤 질환이 있다는 의미가 아닙니다. 이 도구는 본인의 패턴을 살펴보는 자기 이해 도구이며, 결과보다 이어지는 핵심 패턴 분석이 더 중요합니다.</div>
+
+      <h2 style="margin-top:20px;">총점 게이지</h2>
+      <p class="muted">섹션 A~G만 합산 (섹션 H는 환경 스타일 프로파일이라 총점에서 제외됩니다)</p>
+      <div class="gauge">
+        <div class="g0" style="width:25%"></div><div class="g1" style="width:25%"></div><div class="g2" style="width:25%"></div><div class="g3" style="width:25%"></div>
+        <div class="gauge-marker" style="left:${gaugePos}%"></div>
+      </div>
+      <div class="gauge-labels"><span>0</span><span>91</span><span>182</span><span>273</span><span>364</span></div>
+      <p style="margin-top:12px;"><b>총점 ${total} / ${maxTotal}</b> · <b>${band.label}</b> 구간</p>
+      <div class="notice" style="margin-top:10px;"><b>${band.title}</b><br><span class="muted" style="display:block;margin-top:6px;">${band.text}</span></div>
+    </div>
+
+    <div class="card">
+      <h2>섹션별 백분율</h2>
+      ${secBars.map(b=>`
+        <div class="bar-row">
+          <span>${b.label}</span>
+          <div class="bar-track"><div class="bar-fill ${b.cls}" style="width:${b.val}%"></div></div>
+          <span>${fmt(b.val)}%</span>
+        </div>`).join('')}
+      <p class="muted">50% 이상이면 그 영역의 패턴이 어느 정도 나타나는 것이고, 75% 이상이면 뚜렷하게 나타나는 것입니다. 정상/비정상의 구분이 아니라 정도의 차이입니다.</p>
+    </div>
+
+    <div class="card">
+      <h2>패턴 매트릭스 — 주의·집중 ↔ 활동성·즉흥성</h2>
+      <div class="matrix-box">
+        <span class="matrix-axis-label" style="top:4px;left:8px;">A% 높음</span>
+        <span class="matrix-axis-label" style="bottom:4px;left:8px;">A% 낮음</span>
+        <span class="matrix-axis-label" style="bottom:4px;right:8px;">B% 높음</span>
+        <div class="matrix-dot" style="left:${B}%;top:${100-A}%;"></div>
+      </div>
+      <p><b>A% = ${fmt(A)}%</b> · <b>B% = ${fmt(B)}%</b> · 차이 = ${fmt(A-B)}%p</p>
+      <div class="notice" style="margin-top:10px;"><b>${mtx.label}</b><br><span class="muted" style="display:block;margin-top:6px;">${mtx.desc}</span></div>
+    </div>
+
+    <div class="card">
+      <h2>핵심 패턴 분석</h2>
+      <p class="muted">총점만으로는 부족합니다. 아래 4가지 패턴이 함께 충족되는지가 더 신뢰할 만한 신호입니다.</p>
+      <div class="pattern"><div><b>1. 발달 일관성</b><br><span class="muted">C% ≥ 50%이고 (A%·B% 평균 ≥ 50% 또는 D% ≥ 50%) — 어린 시절부터 현재까지 일관된 패턴이 있는가.</span></div><span class="chip ${p1?'on':'off'}">${p1?'충족':'미충족'}</span></div>
+      <div class="pattern"><div><b>2. 기능 영향</b><br><span class="muted">D% ≥ 50% — 일상에 실질적 영향이 있는가.</span></div><span class="chip ${p2?'on':'off'}">${p2?'충족':'미충족'}</span></div>
+      <div class="pattern"><div><b>3. 내적 특이성</b><br><span class="muted">F% ≥ 50% — 시간 감각·몰입·거절민감성이 뚜렷한가.</span></div><span class="chip ${p3?'on':'off'}">${p3?'충족':'미충족'}</span></div>
+      <div class="pattern"><div><b>4. 양극성</b><br><span class="muted">G% ≥ 50%이고 (A%·B% 평균 ≥ 50%) — 약점과 강점이 동시에 뚜렷한가.</span></div><span class="chip ${p4?'on':'off'}">${p4?'충족':'미충족'}</span></div>
+      ${burnoutNote ? '<div class="notice">G%가 30% 미만이면서 A·B·D는 높습니다 — 우울·번아웃 가능성도 함께 살펴볼 여지가 있습니다.</div>' : ''}
+    </div>
+
+    <div class="card">
+      <h2>환경·작업 스타일 프로파일 (섹션 H)</h2>
+      <p class="muted">점수가 아니라 어떤 환경에서 능률이 오르는지를 보는 부분입니다. +2 이상이면 우측 성향, −2 이하면 좌측 성향, 그 사이는 양가적입니다.</p>
+      ${axes.map(ax=>`
+        <div class="axis">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;"><b>${ax.label}</b><span class="muted">${ax.val>0?'+':''}${ax.val}</span></div>
+          <div class="axis-track">
+            <div class="axis-fill" style="left:50%;width:${Math.abs(ax.val)/4*50}%;${ax.val<0?'left:'+(50-Math.abs(ax.val)/4*50)+'%;':''}"></div>
+            <div class="axis-dot" style="left:${50+ax.val/4*50}%;"></div>
+          </div>
+          <div class="axis-labels"><span>${ax.left}</span><span>${ax.right}</span></div>
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <h2>다음 단계</h2>
+      <p class="lead">이 도구의 결과는 출발점이지 도착점이 아닙니다. 일상에 어려움이 크다면 정신건강의학과 또는 임상심리 전문가와 상담하시길 권합니다. 이런 양상은 다양한 요인(우울·불안·수면·만성 스트레스 등)에서도 나타날 수 있어, 전문가의 종합적 평가가 도움이 됩니다.</p>
+      <div class="notice dark">
+        <b>이 결과로 자기를 규정하지 마세요.</b><br>
+        <span class="muted">사람은 점수표보다 훨씬 복잡하고 다층적인 존재이며, 이 도구가 살핀 영역은 그중 일부일 뿐입니다. 결과는 자기 이해의 출발점으로만 사용하시고, 어떤 결론이든 전문가와의 대화를 통해 내려가시길 바랍니다.</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn ghost" id="editBtn">응답 수정하기</button>
+        <button class="btn" id="retakeBtn">처음부터 다시 하기</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('editBtn').addEventListener('click', ()=>{
+    state.currentSection = 0;
+    saveState();
+    showQuiz();
+  });
+  document.getElementById('retakeBtn').addEventListener('click', ()=>{
+    if(confirm('모든 응답을 지우고 처음부터 다시 시작할까요?')){
+      localStorage.removeItem(STORAGE_KEY);
+      state = {answers:{}, currentSection:0, consentGiven:false, started:false};
+      showView('intro');
+      renderIntro();
+      renderTabs();
+      renderTopProgress();
+      window.scrollTo(0,0);
+    }
+  });
+
+  showView('results');
+  renderTabs();
+  window.scrollTo(0,0);
+}
+
+function showResults(){
+  renderResults();
+}
+
+(function init(){
+  const saved = loadState();
+  if(saved) state = Object.assign({answers:{},currentSection:0,consentGiven:false,started:false}, saved);
+  renderTopProgress();
+  renderTabs();
+  if(state.started){
+    showQuiz();
+  } else {
+    showView('intro');
+    renderIntro();
+  }
+})();
+</script>
+</body>
+</html>
