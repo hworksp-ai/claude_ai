@@ -325,21 +325,57 @@ def page_stock_dashboard():
     selected_date = st.selectbox("기준일", dates, index=0)
     threshold = st.number_input("재고 부족 임계값 (이 값 미만이면 강조 표시)", min_value=0, value=5)
 
-    pivot = db.get_inventory_pivot(selected_date)
-    if pivot.empty:
+    def highlight_low(v):
+        return "background-color: #ffcdd2" if isinstance(v, (int, float)) and v < threshold else ""
+
+    st.subheader("지점별 총 재고")
+    totals = db.get_inventory_branch_totals(selected_date)
+    if totals.empty:
         st.info("선택한 기준일에 데이터가 없습니다.")
     else:
-        def highlight_low(v):
-            return "background-color: #ffcdd2" if isinstance(v, (int, float)) and v < threshold else ""
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.dataframe(totals.style.map(highlight_low, subset=["총재고수량"]), width="stretch")
+        with c2:
+            st.bar_chart(totals.set_index("지점")["총재고수량"])
 
-        st.dataframe(pivot.style.map(highlight_low), width="stretch")
+    st.divider()
+    st.subheader("카테고리별 지점 재고")
+    cat_pivot = db.get_inventory_category_pivot(selected_date)
+    if cat_pivot.empty:
+        st.info("데이터가 없습니다.")
+    else:
+        st.dataframe(cat_pivot.style.map(highlight_low), width="stretch")
+
+    st.divider()
+    st.subheader("모델 검색으로 상세 재고 조회")
+    st.caption("상품 종류가 많아 (2,000개 이상 SKU) 전체를 한 번에 보여주지 않습니다. 카테고리/모델명으로 좁혀서 조회하세요.")
+    categories = ["전체"] + db.list_categories()
+    c1, c2 = st.columns(2)
+    with c1:
+        sel_category = st.selectbox("카테고리", categories, key="stock_category_filter")
+    with c2:
+        model_search = st.text_input("모델명 검색 (부분 일치)", key="stock_model_search")
+
+    detail_pivot = db.get_inventory_pivot(
+        selected_date, None if sel_category == "전체" else sel_category, model_search or None
+    )
+    if detail_pivot.empty:
+        st.info("조건에 맞는 재고 데이터가 없습니다. 카테고리 또는 모델명을 지정해보세요.")
+    elif detail_pivot.shape[1] > 60:
+        st.warning(f"조건에 맞는 상품이 {detail_pivot.shape[1]}개로 너무 많습니다. 모델명을 더 좁혀서 검색해주세요.")
+    else:
+        st.dataframe(detail_pivot.style.map(highlight_low), width="stretch")
 
     st.divider()
     st.subheader("지점/상품별 재고 추이")
     branches = db.list_branches()
-    products = db.list_products()
+    products = db.list_products(None if sel_category == "전체" else sel_category, model_search or None)
     if not branches or not products:
+        st.info("추이를 조회할 상품이 없습니다. 위에서 카테고리/모델명을 지정해주세요.")
         return
+    if len(products) > 200:
+        st.caption("상품이 많아 목록이 길 수 있습니다. 모델명을 좁혀서 검색하면 더 편리합니다.")
 
     c1, c2 = st.columns(2)
     with c1:

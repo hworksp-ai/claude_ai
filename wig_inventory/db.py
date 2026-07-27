@@ -300,7 +300,8 @@ def list_order_units(branch_id: str | None = None, status: str | None = None) ->
     query = f"""
         SELECT order_unit_no AS 오더번호, branch_id AS 지점, model AS 모델, color AS 컬러, size AS 사이즈,
                factory AS 발주공장, order_type AS 오더구분,
-               factory_ship_date AS 공장발송일, stock_date AS 입고일, cancel_date AS 취소일, discard_date AS 폐기일,
+               COALESCE(factory_ship_date, '') AS 공장발송일, COALESCE(stock_date, '') AS 입고일,
+               COALESCE(cancel_date, '') AS 취소일, COALESCE(discard_date, '') AS 폐기일,
                {_STATUS_CASE_SQL} AS 진행상태
         FROM order_units
         WHERE 1=1
@@ -391,22 +392,55 @@ def list_branches():
     return [(r["branch_id"], r["branch_id"]) for r in rows]
 
 
-def list_products():
+def list_products(category: str | None = None, model_search: str | None = None):
     conn = get_conn()
-    rows = conn.execute(
-        "SELECT product_id, model, color, size FROM products ORDER BY model, color, size"
-    ).fetchall()
+    query = "SELECT product_id, model, color, size FROM products WHERE 1=1"
+    params = []
+    if category:
+        query += " AND category=?"
+        params.append(category)
+    if model_search:
+        query += " AND model LIKE ?"
+        params.append(f"%{model_search}%")
+    query += " ORDER BY model, color, size"
+    rows = conn.execute(query, params).fetchall()
     conn.close()
     return [(r["product_id"], f"{r['model']} ({r['color'] or '-'}/{r['size']})") for r in rows]
 
 
-def get_inventory_pivot(snapshot_date: str) -> pd.DataFrame:
+def list_categories():
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category"
+    ).fetchall()
+    conn.close()
+    return [r["category"] for r in rows]
+
+
+def get_inventory_branch_totals(snapshot_date: str) -> pd.DataFrame:
+    """지점별 총 재고 수량 (전체 상품 합계) - 대시보드 기본 요약용."""
     conn = get_conn()
     df = pd.read_sql_query(
         """
-        SELECT s.branch_id AS 지점,
-               (p.model || ' (' || COALESCE(p.color, '-') || '/' || CAST(p.size AS TEXT) || ')') AS 상품,
-               s.quantity AS 수량
+        SELECT branch_id AS 지점, SUM(quantity) AS 총재고수량
+        FROM inventory_snapshots
+        WHERE snapshot_date = ?
+        GROUP BY branch_id
+        ORDER BY 총재고수량 DESC
+        """,
+        conn,
+        params=(snapshot_date,),
+    )
+    conn.close()
+    return df
+
+
+def get_inventory_category_pivot(snapshot_date: str) -> pd.DataFrame:
+    """지점 x 카테고리(gubun) 재고 합계 - 컬럼 수가 적어 안전하게 렌더링 가능."""
+    conn = get_conn()
+    df = pd.read_sql_query(
+        """
+        SELECT s.branch_id AS 지점, COALESCE(p.category, '미분류') AS 카테고리, s.quantity AS 수량
         FROM inventory_snapshots s
         JOIN products p ON p.product_id = s.product_id
         WHERE s.snapshot_date = ?
@@ -414,6 +448,31 @@ def get_inventory_pivot(snapshot_date: str) -> pd.DataFrame:
         conn,
         params=(snapshot_date,),
     )
+    conn.close()
+    if df.empty:
+        return df
+    return df.pivot_table(index="지점", columns="카테고리", values="수량", fill_value=0, aggfunc="sum")
+
+
+def get_inventory_pivot(snapshot_date: str, category: str | None = None, model_search: str | None = None) -> pd.DataFrame:
+    """지점 x 상품 재고 피벗. 카테고리/모델 검색으로 좁혀서 호출해야 렌더링 가능한 크기를 유지한다."""
+    conn = get_conn()
+    query = """
+        SELECT s.branch_id AS 지점,
+               (p.model || ' (' || COALESCE(p.color, '-') || '/' || CAST(p.size AS TEXT) || ')') AS 상품,
+               s.quantity AS 수량
+        FROM inventory_snapshots s
+        JOIN products p ON p.product_id = s.product_id
+        WHERE s.snapshot_date = ?
+    """
+    params = [snapshot_date]
+    if category:
+        query += " AND p.category = ?"
+        params.append(category)
+    if model_search:
+        query += " AND p.model LIKE ?"
+        params.append(f"%{model_search}%")
+    df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     if df.empty:
         return df
