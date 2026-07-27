@@ -1,3 +1,4 @@
+import os
 from datetime import date
 
 import pandas as pd
@@ -8,6 +9,41 @@ import parsing
 from parsing import MissingColumnError, build_lookup, require_col
 
 st.set_page_config(page_title="기성가발 관리", page_icon="💇", layout="wide")
+
+
+def get_configured_password() -> str | None:
+    try:
+        pw = st.secrets.get("APP_PASSWORD")
+    except Exception:
+        pw = None
+    return pw or os.environ.get("WIG_APP_PASSWORD")
+
+
+def require_login():
+    if st.session_state.get("authenticated"):
+        return
+
+    configured_password = get_configured_password()
+    if not configured_password:
+        st.title("하이모 기성가발 관리")
+        st.error(
+            "접근 비밀번호가 설정되지 않았습니다. "
+            "`.streamlit/secrets.toml`에 APP_PASSWORD를 설정하거나 WIG_APP_PASSWORD 환경변수를 지정해주세요."
+        )
+        st.stop()
+
+    st.title("하이모 기성가발 관리")
+    pwd = st.text_input("비밀번호", type="password", key="login_password")
+    if st.button("입장", key="login_button"):
+        if pwd == configured_password:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("비밀번호가 올바르지 않습니다.")
+    st.stop()
+
+
+require_login()
 db.init_db()
 
 
