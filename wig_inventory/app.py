@@ -126,6 +126,191 @@ def page_sales_upload():
             st.error(f"업로드 처리 중 오류가 발생했습니다: {e}")
 
 
+# ── 발주 업로드 ──────────────────────────────────────────────────────────────
+
+
+def page_order_batch_upload():
+    st.header("발주 업로드")
+    st.caption(
+        "ERP '발주' 엑셀 파일을 업로드하세요. "
+        "필요 컬럼: 사업장, 발주일자, 발주번호, MODEL NO, COLOR CODE, 둘레 SIZE, 신청 수량, 확정 수량, 발주 취소수량."
+    )
+
+    uploaded = st.file_uploader("발주 엑셀 파일", type=["xlsx", "xls"], key="order_batch_uploader")
+    if not uploaded:
+        return
+
+    try:
+        df = pd.read_excel(uploaded)
+    except Exception as e:
+        st.error(f"파일을 읽는 중 오류가 발생했습니다: {e}")
+        return
+
+    lookup = build_lookup(df)
+    try:
+        order_no_col = require_col(lookup, "발주번호", "발주번호")
+        branch_col = require_col(lookup, "사업장", "사업장")
+        order_date_col = require_col(lookup, "발주일자", "발주일자")
+        model_col = require_col(lookup, "MODEL NO", "MODEL NO")
+        color_col = require_col(lookup, "COLOR CODE", "COLOR CODE")
+        size_col = require_col(lookup, "둘레 SIZE", "둘레 SIZE")
+        requested_qty_col = require_col(lookup, "신청 수량", "신청 수량")
+        confirmed_qty_col = require_col(lookup, "확정 수량", "확정 수량")
+        cancelled_qty_col = require_col(lookup, "발주 취소수량", "발주 취소수량")
+    except MissingColumnError as e:
+        st.error(str(e))
+        st.write("업로드된 파일의 컬럼:", list(df.columns))
+        return
+
+    na_code_col = lookup.get(parsing.normalize_key("NA CODE"))
+    hq_confirm_date_col = lookup.get(parsing.normalize_key("본사 확정일자"))
+    factory_code_col = lookup.get(parsing.normalize_key("fact_cd"))
+    serial_range_col = lookup.get(parsing.normalize_key("compute_2"))
+    factory_accept_date_col = lookup.get(parsing.normalize_key("fact_acpt_dt"))
+    note_col = lookup.get(parsing.normalize_key("비 고"))
+
+    st.subheader("미리보기")
+    st.dataframe(df.head(20), width="stretch")
+
+    if st.button("업로드 확정", type="primary", key="order_batch_confirm"):
+        valid, dropped = parsing.transform_order_batch(
+            df, order_no_col, branch_col, order_date_col, model_col, color_col, size_col,
+            requested_qty_col, confirmed_qty_col, cancelled_qty_col, na_code_col, hq_confirm_date_col,
+            factory_code_col, serial_range_col, factory_accept_date_col, note_col,
+        )
+        if valid.empty:
+            st.error("업로드할 유효한 데이터가 없습니다. 컬럼을 확인해주세요.")
+            db.log_upload(uploaded.name, "order_batch", 0, "실패", "유효한 행 없음")
+            return
+        try:
+            row_count = db.save_order_batches(valid)
+            db.log_upload(uploaded.name, "order_batch", row_count, "성공", None)
+            st.success(f"{row_count}건 업로드 완료 (발주번호 {valid['order_no'].nunique()}건)")
+            if dropped:
+                st.warning(f"필수 값이 비어있는 {dropped}건은 제외되었습니다.")
+        except Exception as e:
+            db.log_upload(uploaded.name, "order_batch", 0, "실패", str(e))
+            st.error(f"업로드 처리 중 오류가 발생했습니다: {e}")
+
+
+# ── 입고현황 업로드 ──────────────────────────────────────────────────────────
+
+
+def page_order_unit_upload():
+    st.header("입고현황(발주현황조회) 업로드")
+    st.caption(
+        "ERP '발주현황조회' 엑셀 파일을 업로드하세요. "
+        "필요 컬럼: 오더번호, 사업장, MODEL NO, COLOR CODE, 둘레 SIZE, 재고일자. "
+        "입고일은 '입고일자'가 아닌 '재고일자' 컬럼을 기준으로 인식합니다."
+    )
+
+    uploaded = st.file_uploader("발주현황조회 엑셀 파일", type=["xlsx", "xls"], key="order_unit_uploader")
+    if not uploaded:
+        return
+
+    try:
+        df = pd.read_excel(uploaded)
+    except Exception as e:
+        st.error(f"파일을 읽는 중 오류가 발생했습니다: {e}")
+        return
+
+    lookup = build_lookup(df)
+    try:
+        order_unit_no_col = require_col(lookup, "오더번호", "오더번호")
+        branch_col = require_col(lookup, "사업장", "사업장")
+        model_col = require_col(lookup, "MODEL NO", "MODEL NO")
+        color_col = require_col(lookup, "COLOR CODE", "COLOR CODE")
+        size_col = require_col(lookup, "둘레 SIZE", "둘레 SIZE")
+        stock_date_col = require_col(lookup, "재고일자", "재고일자")
+    except MissingColumnError as e:
+        st.error(str(e))
+        st.write("업로드된 파일의 컬럼:", list(df.columns))
+        return
+
+    factory_col = lookup.get(parsing.normalize_key("발주공장"))
+    order_type_col = lookup.get(parsing.normalize_key("오더구분"))
+    factory_ship_date_col = lookup.get(parsing.normalize_key("공장 발송일자"))
+    factory_receive_date_col = lookup.get(parsing.normalize_key("공장 접수일자"))
+    factory_out_date_col = lookup.get(parsing.normalize_key("공장 출고일자"))
+    trade_in_date_col = lookup.get(parsing.normalize_key("무역부 입고일자"))
+    trade_ship_date_col = lookup.get(parsing.normalize_key("무역부 선적일자"))
+    cancel_date_col = lookup.get(parsing.normalize_key("취소일자"))
+    discard_date_col = lookup.get(parsing.normalize_key("폐기일자"))
+
+    st.subheader("미리보기")
+    st.dataframe(df.head(20), width="stretch")
+
+    if st.button("업로드 확정", type="primary", key="order_unit_confirm"):
+        valid, dropped = parsing.transform_order_unit(
+            df, order_unit_no_col, branch_col, model_col, color_col, size_col, factory_col, order_type_col,
+            factory_ship_date_col, factory_receive_date_col, factory_out_date_col, trade_in_date_col,
+            trade_ship_date_col, stock_date_col, cancel_date_col, discard_date_col,
+        )
+        if valid.empty:
+            st.error("업로드할 유효한 데이터가 없습니다. 컬럼을 확인해주세요.")
+            db.log_upload(uploaded.name, "order_unit", 0, "실패", "유효한 행 없음")
+            return
+        try:
+            row_count = db.save_order_units(valid)
+            db.log_upload(uploaded.name, "order_unit", row_count, "성공", None)
+            st.success(f"{row_count}건 업로드(갱신) 완료")
+            if dropped:
+                st.warning(f"필수 값이 비어있는 {dropped}건은 제외되었습니다.")
+        except Exception as e:
+            db.log_upload(uploaded.name, "order_unit", 0, "실패", str(e))
+            st.error(f"업로드 처리 중 오류가 발생했습니다: {e}")
+
+
+# ── 발주 관리 대시보드 ────────────────────────────────────────────────────────
+
+
+def page_order_dashboard():
+    st.header("발주 관리")
+
+    st.subheader("진행상태별 집계")
+    summary = db.get_order_status_summary()
+    if summary.empty:
+        st.info("아직 업로드된 입고현황 데이터가 없습니다. '입고현황 업로드' 메뉴에서 발주현황조회 엑셀을 업로드해주세요.")
+    else:
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.dataframe(summary, width="stretch")
+        with c2:
+            st.bar_chart(summary.set_index("진행상태")["건수"])
+
+    st.divider()
+    st.subheader("입고현황 목록")
+    branch_options = ["전체"] + [b[0] for b in db.list_branches()]
+    status_options = ["전체", "발주대기", "공장발송", "공장접수(생산중)", "공장출고", "무역부입고",
+                       "무역부선적(배송중)", "입고완료", "취소", "폐기"]
+    c1, c2 = st.columns(2)
+    with c1:
+        sel_branch = st.selectbox("지점", branch_options, key="order_unit_branch_filter")
+    with c2:
+        sel_status = st.selectbox("진행상태", status_options, key="order_unit_status_filter")
+    units = db.list_order_units(
+        None if sel_branch == "전체" else sel_branch, None if sel_status == "전체" else sel_status
+    )
+    st.dataframe(units, width="stretch")
+
+    st.divider()
+    st.subheader("발주 리드타임 (공장 발송 → 입고, 발주공장별 평균)")
+    lead = db.get_lead_time_stats()
+    if lead.empty:
+        st.info("리드타임을 계산할 입고 완료 데이터가 없습니다.")
+    else:
+        st.dataframe(lead, width="stretch")
+
+    st.divider()
+    st.subheader("발주 목록 (배치 단위)")
+    branch_sel2 = st.selectbox("지점 ", branch_options, key="order_batch_branch_filter")
+    batches = db.list_order_batches(None if branch_sel2 == "전체" else branch_sel2)
+    if batches.empty:
+        st.info("아직 업로드된 발주 데이터가 없습니다. '발주 업로드' 메뉴에서 발주 엑셀을 업로드해주세요.")
+    else:
+        st.dataframe(batches, width="stretch")
+
+
 # ── 재고 대시보드 ────────────────────────────────────────────────────────────
 
 
@@ -235,8 +420,11 @@ def page_upload_logs():
 PAGES = {
     "현재고 업로드": page_stock_upload,
     "판매현황 업로드": page_sales_upload,
+    "발주 업로드": page_order_batch_upload,
+    "입고현황 업로드": page_order_unit_upload,
     "재고 대시보드": page_stock_dashboard,
     "판매 트래커": page_sales_dashboard,
+    "발주 관리": page_order_dashboard,
     "업로드 이력": page_upload_logs,
 }
 
