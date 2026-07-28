@@ -553,6 +553,100 @@ def page_sales_dashboard():
         st.line_chart(comparison)
 
 
+# ── 재고회전율 분석 ──────────────────────────────────────────────────────────
+
+
+def _turnover_bucket(months: float) -> str:
+    if months == float("inf"):
+        return "판매없음"
+    if months < 1:
+        return "0~1개월"
+    if months < 3:
+        return "1~3개월"
+    if months < 6:
+        return "3~6개월"
+    if months < 12:
+        return "6~12개월"
+    return "12개월+"
+
+
+_TURNOVER_BUCKET_ORDER = ["0~1개월", "1~3개월", "3~6개월", "6~12개월", "12개월+", "판매없음"]
+
+
+def page_turnover_dashboard():
+    st.header("재고회전율 분석")
+    st.caption(
+        "재고소진개월 = 최신 재고수량 ÷ 판매 이력 전체 기간의 월평균 판매수량 "
+        "(판매 이력이 없는 조합은 '판매없음'으로 분류)"
+    )
+
+    turnover = db.get_turnover_detail()
+    if turnover.empty:
+        st.info("재고 또는 판매 데이터가 없습니다. '현재고 업로드'와 '판매현황 업로드' 메뉴에서 먼저 데이터를 업로드해주세요.")
+        return
+
+    st.subheader("재고회전율(재고소진개월) 분포")
+    categories = ["전체"] + sorted(turnover["카테고리"].dropna().unique().tolist())
+    sel_category = st.selectbox("카테고리", categories, key="turnover_category_filter")
+    filtered = turnover if sel_category == "전체" else turnover[turnover["카테고리"] == sel_category]
+
+    filtered = filtered.copy()
+    filtered["구간"] = filtered["재고소진개월"].apply(_turnover_bucket)
+    counts = filtered["구간"].value_counts().reindex(_TURNOVER_BUCKET_ORDER, fill_value=0)
+
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        st.dataframe(counts.rename("건수"), width="stretch")
+    with c2:
+        st.bar_chart(counts)
+
+    finite = filtered[filtered["재고소진개월"] != float("inf")]
+    if not finite.empty:
+        st.caption(
+            f"판매 이력이 있는 {len(finite)}개 조합 기준 — 평균 {finite['재고소진개월'].mean():.1f}개월, "
+            f"중앙값 {finite['재고소진개월'].median():.1f}개월"
+        )
+
+    st.divider()
+    st.subheader("지점 간 비교 / 군집")
+    st.caption("지점별 총재고수량, 월평균판매합계, 평균재고소진개월을 기준으로 유사한 지점을 그룹화합니다.")
+
+    branch_agg = (
+        turnover.groupby("지점")
+        .agg(총재고수량=("재고수량", "sum"), 월평균판매합계=("월평균판매", "sum"), 취급모델수=("모델", "count"))
+        .reset_index()
+    )
+    finite_all = turnover[turnover["재고소진개월"] != float("inf")]
+    turnover_mean = finite_all.groupby("지점")["재고소진개월"].mean().rename("평균재고소진개월")
+    branch_agg = branch_agg.merge(turnover_mean, on="지점", how="left")
+    branch_agg["평균재고소진개월"] = branch_agg["평균재고소진개월"].fillna(branch_agg["평균재고소진개월"].median())
+
+    if len(branch_agg) < 3:
+        st.info("군집 분석을 하기에 지점 수가 너무 적습니다 (최소 3개 지점 필요).")
+        return
+
+    max_k = min(6, len(branch_agg) - 1)
+    k = st.slider("군집 수", min_value=2, max_value=max_k, value=min(3, max_k), key="turnover_cluster_k")
+
+    feature_cols = ["총재고수량", "월평균판매합계", "평균재고소진개월"]
+    features = branch_agg[feature_cols]
+    scaled = (features - features.mean()) / features.std().replace(0, 1)
+
+    from sklearn.cluster import KMeans
+
+    model = KMeans(n_clusters=k, random_state=42, n_init=10)
+    branch_agg["군집"] = model.fit_predict(scaled).astype(str)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.dataframe(
+            branch_agg.sort_values("군집")[["지점", "군집"] + feature_cols],
+            width="stretch",
+        )
+    with c2:
+        st.scatter_chart(branch_agg, x="월평균판매합계", y="평균재고소진개월", color="군집")
+
+
 # ── 업로드 이력 ──────────────────────────────────────────────────────────────
 
 
@@ -574,6 +668,7 @@ UPLOAD_PAGES = {
 DASHBOARD_PAGES = {
     "재고 대시보드": page_stock_dashboard,
     "판매 트래커": page_sales_dashboard,
+    "재고회전율 분석": page_turnover_dashboard,
     "발주 관리": page_order_dashboard,
     "업로드 이력": page_upload_logs,
 }

@@ -580,6 +580,60 @@ def get_inventory_trend(branch_id: str, product_id: str) -> pd.DataFrame:
     )
 
 
+def get_turnover_detail(snapshot_date: str | None = None) -> pd.DataFrame:
+    """지점 x 모델 최신 재고와, 판매 이력이 있는 전체 기간의 월평균 판매수량을 결합해
+    재고소진개월(=재고수량/월평균판매, 판매 이력이 없으면 inf)을 계산한다."""
+    engine = get_engine()
+    if snapshot_date is None:
+        with engine.connect() as conn:
+            row = conn.execute(text("SELECT MAX(snapshot_date) AS d FROM inventory_snapshots")).mappings().first()
+        snapshot_date = row["d"] if row else None
+    empty = pd.DataFrame(columns=["지점", "모델", "컬러", "사이즈", "카테고리", "재고수량", "월평균판매", "재고소진개월"])
+    if snapshot_date is None:
+        return empty
+
+    stock_df = pd.read_sql_query(
+        text(
+            """
+            SELECT s.branch_id AS 지점, s.product_id, p.model AS 모델, p.color AS 컬러, p.size AS 사이즈,
+                   COALESCE(p.category, '미분류') AS 카테고리, s.quantity AS 재고수량
+            FROM inventory_snapshots s
+            JOIN products p ON p.product_id = s.product_id
+            WHERE s.snapshot_date = :d
+            """
+        ),
+        engine,
+        params={"d": snapshot_date},
+    )
+    if stock_df.empty:
+        return empty
+
+    sales_avg_df = pd.read_sql_query(
+        text(
+            """
+            SELECT branch_id AS 지점, product_id,
+                   SUM(quantity) AS 총판매수량, COUNT(DISTINCT sale_month) AS 판매월수
+            FROM sales
+            GROUP BY branch_id, product_id
+            """
+        ),
+        engine,
+    )
+    if sales_avg_df.empty:
+        stock_df["월평균판매"] = 0.0
+    else:
+        sales_avg_df["월평균판매"] = sales_avg_df["총판매수량"] / sales_avg_df["판매월수"]
+        stock_df = stock_df.merge(
+            sales_avg_df[["지점", "product_id", "월평균판매"]], on=["지점", "product_id"], how="left"
+        )
+        stock_df["월평균판매"] = stock_df["월평균판매"].fillna(0.0)
+
+    stock_df["재고소진개월"] = stock_df.apply(
+        lambda r: (r["재고수량"] / r["월평균판매"]) if r["월평균판매"] > 0 else float("inf"), axis=1
+    )
+    return stock_df.drop(columns=["product_id"])
+
+
 def get_sales_months():
     engine = get_engine()
     with engine.connect() as conn:
