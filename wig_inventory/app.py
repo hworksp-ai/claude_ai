@@ -96,6 +96,7 @@ def page_stock_upload():
         snap_str = snapshot_date.strftime("%Y-%m-%d")
         valid_frames = []
         total_dropped = 0
+        results = []
         for name, df in dfs.items():
             lookup = build_lookup(df)
             try:
@@ -108,6 +109,7 @@ def page_stock_upload():
             except MissingColumnError as e:
                 st.error(f"'{name}': {e}")
                 db.log_upload(name, "inventory", 0, "실패", str(e))
+                results.append({"파일명": name, "상태": "실패", "비고": str(e)})
                 continue
 
             valid, dropped = parsing.transform_stock(
@@ -116,25 +118,33 @@ def page_stock_upload():
             if valid.empty:
                 st.error(f"'{name}': 업로드할 유효한 데이터가 없습니다.")
                 db.log_upload(name, "inventory", 0, "실패", "유효한 행 없음")
+                results.append({"파일명": name, "상태": "실패", "비고": "유효한 행 없음"})
                 continue
             valid_frames.append(valid)
             total_dropped += dropped
             db.log_upload(name, "inventory", len(valid), "성공", None)
+            results.append({"파일명": name, "상태": "성공", "비고": f"{len(valid)}건 (제외 {dropped}건)"})
 
-        if not valid_frames:
-            return
+        if valid_frames:
+            try:
+                combined = pd.concat(valid_frames, ignore_index=True)
+                combined = combined.groupby(["branch", "product_id"], as_index=False).agg(
+                    {"model": "first", "color": "first", "size": "first", "category": "first", "quantity": "sum"}
+                )
+                row_count = db.save_stock_upload(combined, snap_str)
+                st.success(f"총 {row_count}건 업로드 완료 (기준일: {snap_str}, 파일 {len(valid_frames)}개)")
+                if total_dropped:
+                    st.warning(f"지점/모델/수량 값이 비어있는 {total_dropped}건은 제외되었습니다.")
+            except Exception as e:
+                st.error(f"업로드 처리 중 오류가 발생했습니다: {e}")
+                for r in results:
+                    if r["상태"] == "성공":
+                        r["상태"] = "실패"
+                        r["비고"] = f"DB 저장 오류: {e}"
 
-        try:
-            combined = pd.concat(valid_frames, ignore_index=True)
-            combined = combined.groupby(["branch", "product_id"], as_index=False).agg(
-                {"model": "first", "color": "first", "size": "first", "category": "first", "quantity": "sum"}
-            )
-            row_count = db.save_stock_upload(combined, snap_str)
-            st.success(f"총 {row_count}건 업로드 완료 (기준일: {snap_str}, 파일 {len(valid_frames)}개)")
-            if total_dropped:
-                st.warning(f"지점/모델/수량 값이 비어있는 {total_dropped}건은 제외되었습니다.")
-        except Exception as e:
-            st.error(f"업로드 처리 중 오류가 발생했습니다: {e}")
+        if results:
+            st.subheader("업로드 결과")
+            st.dataframe(pd.DataFrame(results), width="stretch")
 
 
 # ── 판매 업로드 ──────────────────────────────────────────────────────────────
@@ -167,9 +177,9 @@ def page_sales_upload():
     )
 
     if st.button("업로드 확정", type="primary", key="sales_confirm"):
-        total_rows = 0
+        valid_frames = []
         total_dropped = 0
-        all_months = set()
+        results = []
         for name, df in dfs.items():
             lookup = build_lookup(df)
             try:
@@ -184,6 +194,7 @@ def page_sales_upload():
             except MissingColumnError as e:
                 st.error(f"'{name}': {e}")
                 db.log_upload(name, "sales", 0, "실패", str(e))
+                results.append({"파일명": name, "상태": "실패", "비고": str(e)})
                 continue
 
             valid, dropped = parsing.transform_sales(
@@ -193,21 +204,32 @@ def page_sales_upload():
             if valid.empty:
                 st.error(f"'{name}': 업로드할 유효한 데이터가 없습니다. 컬럼 또는 판매월 형식을 확인해주세요.")
                 db.log_upload(name, "sales", 0, "실패", "유효한 행 없음")
+                results.append({"파일명": name, "상태": "실패", "비고": "유효한 행 없음"})
                 continue
-            try:
-                row_count, months = db.save_sales_upload(valid)
-                db.log_upload(name, "sales", row_count, "성공", None)
-                total_rows += row_count
-                total_dropped += dropped
-                all_months |= months
-            except Exception as e:
-                db.log_upload(name, "sales", 0, "실패", str(e))
-                st.error(f"'{name}' 처리 중 오류가 발생했습니다: {e}")
+            valid_frames.append(valid)
+            total_dropped += dropped
+            db.log_upload(name, "sales", len(valid), "성공", None)
+            results.append({"파일명": name, "상태": "성공", "비고": f"{len(valid)}건 (제외 {dropped}건)"})
 
-        if total_rows:
-            st.success(f"총 {total_rows}건 업로드 완료 (대상 월: {', '.join(sorted(all_months))})")
-        if total_dropped:
-            st.warning(f"필수 값이 비어있거나 판매월 형식이 잘못된 {total_dropped}건은 제외되었습니다.")
+        # 파일들을 합친 뒤 한 번에 저장해야, 같은 판매월을 포함한 여러 파일을 동시에 올릴 때
+        # 파일별로 따로 저장하면서 서로의 데이터를 덮어써 사라지는 문제(월 단위 overwrite-on-reupload)를 막을 수 있다.
+        if valid_frames:
+            try:
+                combined = pd.concat(valid_frames, ignore_index=True)
+                row_count, months = db.save_sales_upload(combined)
+                st.success(f"총 {row_count}건 업로드 완료 (대상 월: {', '.join(sorted(months))})")
+                if total_dropped:
+                    st.warning(f"필수 값이 비어있거나 판매월 형식이 잘못된 {total_dropped}건은 제외되었습니다.")
+            except Exception as e:
+                st.error(f"업로드 처리 중 오류가 발생했습니다: {e}")
+                for r in results:
+                    if r["상태"] == "성공":
+                        r["상태"] = "실패"
+                        r["비고"] = f"DB 저장 오류: {e}"
+
+        if results:
+            st.subheader("업로드 결과")
+            st.dataframe(pd.DataFrame(results), width="stretch")
 
 
 # ── 발주 업로드 ──────────────────────────────────────────────────────────────
@@ -240,9 +262,9 @@ def page_order_batch_upload():
     )
 
     if st.button("업로드 확정", type="primary", key="order_batch_confirm"):
-        total_rows = 0
+        valid_frames = []
         total_dropped = 0
-        total_order_nos = set()
+        results = []
         for name, df in dfs.items():
             lookup = build_lookup(df)
             try:
@@ -258,6 +280,7 @@ def page_order_batch_upload():
             except MissingColumnError as e:
                 st.error(f"'{name}': {e}")
                 db.log_upload(name, "order_batch", 0, "실패", str(e))
+                results.append({"파일명": name, "상태": "실패", "비고": str(e)})
                 continue
 
             na_code_col = lookup.get(parsing.normalize_key("NA CODE"))
@@ -275,21 +298,32 @@ def page_order_batch_upload():
             if valid.empty:
                 st.error(f"'{name}': 업로드할 유효한 데이터가 없습니다.")
                 db.log_upload(name, "order_batch", 0, "실패", "유효한 행 없음")
+                results.append({"파일명": name, "상태": "실패", "비고": "유효한 행 없음"})
                 continue
-            try:
-                row_count = db.save_order_batches(valid)
-                db.log_upload(name, "order_batch", row_count, "성공", None)
-                total_rows += row_count
-                total_dropped += dropped
-                total_order_nos |= set(valid["order_no"])
-            except Exception as e:
-                db.log_upload(name, "order_batch", 0, "실패", str(e))
-                st.error(f"'{name}' 처리 중 오류가 발생했습니다: {e}")
+            valid_frames.append(valid)
+            total_dropped += dropped
+            db.log_upload(name, "order_batch", len(valid), "성공", None)
+            results.append({"파일명": name, "상태": "성공", "비고": f"{len(valid)}건 (제외 {dropped}건)"})
 
-        if total_rows:
-            st.success(f"총 {total_rows}건 업로드 완료 (발주번호 {len(total_order_nos)}건)")
-        if total_dropped:
-            st.warning(f"필수 값이 비어있는 {total_dropped}건은 제외되었습니다.")
+        # 같은 발주번호가 여러 파일에 걸쳐 있을 때 파일별로 따로 저장하면 서로 덮어써 사라지므로,
+        # 합친 뒤 한 번에 저장한다 (판매현황 업로드와 동일한 이유).
+        if valid_frames:
+            try:
+                combined = pd.concat(valid_frames, ignore_index=True)
+                row_count = db.save_order_batches(combined)
+                st.success(f"총 {row_count}건 업로드 완료 (발주번호 {combined['order_no'].nunique()}건)")
+                if total_dropped:
+                    st.warning(f"필수 값이 비어있는 {total_dropped}건은 제외되었습니다.")
+            except Exception as e:
+                st.error(f"업로드 처리 중 오류가 발생했습니다: {e}")
+                for r in results:
+                    if r["상태"] == "성공":
+                        r["상태"] = "실패"
+                        r["비고"] = f"DB 저장 오류: {e}"
+
+        if results:
+            st.subheader("업로드 결과")
+            st.dataframe(pd.DataFrame(results), width="stretch")
 
 
 # ── 입고현황 업로드 ──────────────────────────────────────────────────────────
@@ -325,6 +359,7 @@ def page_order_unit_upload():
     if st.button("업로드 확정", type="primary", key="order_unit_confirm"):
         total_rows = 0
         total_dropped = 0
+        results = []
         for name, df in dfs.items():
             lookup = build_lookup(df)
             try:
@@ -337,6 +372,7 @@ def page_order_unit_upload():
             except MissingColumnError as e:
                 st.error(f"'{name}': {e}")
                 db.log_upload(name, "order_unit", 0, "실패", str(e))
+                results.append({"파일명": name, "상태": "실패", "비고": str(e)})
                 continue
 
             factory_col = lookup.get(parsing.normalize_key("발주공장"))
@@ -357,20 +393,26 @@ def page_order_unit_upload():
             if valid.empty:
                 st.error(f"'{name}': 업로드할 유효한 데이터가 없습니다.")
                 db.log_upload(name, "order_unit", 0, "실패", "유효한 행 없음")
+                results.append({"파일명": name, "상태": "실패", "비고": "유효한 행 없음"})
                 continue
             try:
                 row_count = db.save_order_units(valid)
                 db.log_upload(name, "order_unit", row_count, "성공", None)
                 total_rows += row_count
                 total_dropped += dropped
+                results.append({"파일명": name, "상태": "성공", "비고": f"{row_count}건 (제외 {dropped}건)"})
             except Exception as e:
                 db.log_upload(name, "order_unit", 0, "실패", str(e))
                 st.error(f"'{name}' 처리 중 오류가 발생했습니다: {e}")
+                results.append({"파일명": name, "상태": "실패", "비고": f"DB 저장 오류: {e}"})
 
         if total_rows:
             st.success(f"총 {total_rows}건 업로드(갱신) 완료")
         if total_dropped:
             st.warning(f"필수 값이 비어있는 {total_dropped}건은 제외되었습니다.")
+        if results:
+            st.subheader("업로드 결과")
+            st.dataframe(pd.DataFrame(results), width="stretch")
 
 
 # ── 발주 관리 대시보드 ────────────────────────────────────────────────────────
