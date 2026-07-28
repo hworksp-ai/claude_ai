@@ -43,7 +43,21 @@ def require_login():
     st.stop()
 
 
+def apply_database_url_from_secrets():
+    """Streamlit Cloud의 secrets에 DATABASE_URL이 있으면 환경변수로 반영한다.
+    (db.py는 Streamlit에 의존하지 않도록 os.environ만 바라보게 유지)"""
+    if os.environ.get("DATABASE_URL"):
+        return
+    try:
+        url = st.secrets.get("DATABASE_URL")
+    except Exception:
+        url = None
+    if url:
+        os.environ["DATABASE_URL"] = url
+
+
 require_login()
+apply_database_url_from_secrets()
 db.init_db()
 
 

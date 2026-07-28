@@ -27,11 +27,14 @@ def make_product_id(model: str, color: str, size: int) -> str:
 
 
 def parse_date_series(s: pd.Series) -> pd.Series:
-    """ERP 파일에서 빈 날짜는 공백(' ') 문자열로 채워져 있어, 공백을 NaT로 바꾼 뒤 'YYYY-MM-DD' 문자열로 정규화한다."""
+    """ERP 파일에서 빈 날짜는 공백(' ') 문자열로 채워져 있어, 공백을 NaT로 바꾼 뒤 'YYYY-MM-DD' 문자열로 정규화한다.
+    누락된 값은 (NaN이 아니라) 파이썬 None으로 반환해야 DB에 바인딩할 때 어떤 드라이버에서도 SQL NULL로 저장된다.
+    """
     cleaned = s.astype(str).str.strip()
     cleaned = cleaned.where(cleaned != "", None)
     parsed = pd.to_datetime(cleaned, errors="coerce")
-    return parsed.dt.strftime("%Y-%m-%d")
+    formatted = parsed.dt.strftime("%Y-%m-%d")
+    return formatted.where(parsed.notna(), None)
 
 
 def transform_stock(
