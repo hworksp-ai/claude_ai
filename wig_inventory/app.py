@@ -579,7 +579,7 @@ DASHBOARD_PAGES = {
 }
 PAGES = {**UPLOAD_PAGES, **DASHBOARD_PAGES}
 
-if "current_page" not in st.session_state:
+if st.session_state.get("current_page") not in PAGES:
     st.session_state.current_page = "재고 대시보드"
 
 
