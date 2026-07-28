@@ -1,6 +1,7 @@
 import os
 from datetime import date
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -615,6 +616,35 @@ def _turnover_bucket(months: float) -> str:
 _TURNOVER_BUCKET_ORDER = ["0~1개월", "1~3개월", "3~6개월", "6~12개월", "12개월+", "판매없음"]
 
 
+def _ordered_bar_chart(counts: pd.Series, x_title: str, order: list) -> alt.Chart:
+    """value_counts 등으로 만든 Series를 지정한 순서 그대로(알파벳순 재정렬 없이) 막대차트로 그린다."""
+    df = counts.rename("건수").rename_axis(x_title).reset_index()
+    return (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X(f"{x_title}:N", sort=order, title=None),
+            y=alt.Y("건수:Q"),
+            tooltip=[x_title, "건수"],
+        )
+    )
+
+
+def _top_n_hbar_chart(series: pd.Series, value_title: str, n: int = 15) -> alt.Chart:
+    """지점 등 인덱스를 값 기준 내림차순 TOP N 가로 막대차트로 그린다."""
+    top = series.sort_values(ascending=False).head(n)
+    df = top.rename(value_title).rename_axis("지점").reset_index()
+    return (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X(f"{value_title}:Q"),
+            y=alt.Y("지점:N", sort="-x"),
+            tooltip=["지점", value_title],
+        )
+    )
+
+
 def page_turnover_dashboard():
     st.header("재고회전율 분석")
     st.caption(
@@ -640,9 +670,17 @@ def page_turnover_dashboard():
     with c1:
         st.dataframe(counts.rename("건수"), width="stretch")
     with c2:
-        st.bar_chart(counts)
+        st.altair_chart(_ordered_bar_chart(counts, "구간", _TURNOVER_BUCKET_ORDER), width='stretch')
 
+    total = int(counts.sum())
     finite = filtered[filtered["재고소진개월"] != float("inf")]
+    if total:
+        dead_share = counts.get("판매없음", 0) / total
+        dominant_bucket = counts.idxmax()
+        st.markdown(
+            f"- 전체 {total:,}개 조합 중 가장 많은 구간은 **{dominant_bucket}** ({counts[dominant_bucket]:,}건)입니다.\n"
+            f"- 판매 이력이 없는 조합이 **{counts.get('판매없음', 0):,}건 ({dead_share:.1%})** 있습니다."
+        )
     if not finite.empty:
         st.caption(
             f"판매 이력이 있는 {len(finite)}개 조합 기준 — 평균 {finite['재고소진개월'].mean():.1f}개월, "
@@ -663,8 +701,8 @@ def page_turnover_dashboard():
     branch_agg = branch_agg.merge(turnover_mean, on="지점", how="left")
     branch_agg["평균재고소진개월"] = branch_agg["평균재고소진개월"].fillna(branch_agg["평균재고소진개월"].median())
 
-    if len(branch_agg) < 3:
-        st.info("군집 분석을 하기에 지점 수가 너무 적습니다 (최소 3개 지점 필요).")
+    if len(branch_agg) < 4:
+        st.info("군집 분석을 하기에 지점 수가 너무 적습니다 (최소 4개 지점 필요).")
         return
 
     max_k = min(6, len(branch_agg) - 1)
@@ -727,16 +765,13 @@ def page_reorder_dashboard():
 
     detail_cols = ["지점", "모델", "컬러", "사이즈", "카테고리", "재고수량", "월평균판매", "재고소진개월", "목표재고", "권장발주수량"]
 
-    st.subheader("상태별 건수")
     counts = data["상태"].value_counts().reindex(_REORDER_STATUS_ORDER, fill_value=0)
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        st.dataframe(counts.rename("건수"), width="stretch")
-    with c2:
-        st.bar_chart(counts)
+    total = len(data)
+    urgent_cnt = int(counts["품절(긴급발주)"] + counts["재고부족(발주필요)"])
+    dead_cnt = int(counts["데드스톡(판매없음)"])
+    excess_cnt = int(counts["재고과잉(저회전)"])
+    total_reorder_qty = int(data["권장발주수량"].sum())
 
-    st.divider()
-    st.subheader("지점별 요약 (권장발주수량 합계 내림차순)")
     branch_summary = (
         data.groupby("지점")
         .agg(
@@ -749,6 +784,77 @@ def page_reorder_dashboard():
         .reset_index()
         .sort_values("권장발주수량_합계", ascending=False)
     )
+
+    st.subheader("핵심 인사이트")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("전체 지점x모델", f"{total:,}")
+    m2.metric("긴급발주 필요", f"{urgent_cnt:,}", f"{urgent_cnt / total:.1%}" if total else None)
+    m3.metric("재고과잉", f"{excess_cnt:,}", f"{excess_cnt / total:.1%}" if total else None)
+    m4.metric("데드스톡", f"{dead_cnt:,}", f"{dead_cnt / total:.1%}" if total else None)
+
+    insights = []
+    if urgent_cnt:
+        insights.append(
+            f"- 품절/재고부족 **{urgent_cnt:,}건**에 대해 총 **{total_reorder_qty:,}개** 발주가 필요합니다."
+        )
+    if not branch_summary.empty and branch_summary.iloc[0]["권장발주수량_합계"] > 0:
+        top_row = branch_summary.iloc[0]
+        insights.append(
+            f"- 발주가 가장 시급한 지점은 **{top_row['지점']}**로, 권장발주수량 합계가 "
+            f"**{int(top_row['권장발주수량_합계']):,}개**입니다."
+        )
+    if dead_cnt:
+        insights.append(
+            f"- **{dead_cnt:,}건 ({dead_cnt / total:.1%})**은 판매 이력이 없는 데드스톡입니다. "
+            "재고 재배치나 프로모션·폐기를 검토해보세요."
+        )
+    if excess_cnt:
+        insights.append(
+            f"- **{excess_cnt:,}건 ({excess_cnt / total:.1%})**은 재고소진 예상 12개월을 초과하는 저회전 재고입니다."
+        )
+    if insights:
+        st.markdown("\n".join(insights))
+    else:
+        st.info("특이사항 없이 대부분 정상 재고 범위입니다.")
+
+    st.divider()
+    st.subheader("상태별 비중")
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        st.dataframe(counts.rename("건수"), width="stretch")
+    with c2:
+        status_df = counts.rename("건수").rename_axis("상태").reset_index()
+        donut = (
+            alt.Chart(status_df)
+            .mark_arc(innerRadius=60)
+            .encode(
+                theta="건수:Q",
+                color=alt.Color("상태:N", sort=_REORDER_STATUS_ORDER),
+                tooltip=["상태", "건수"],
+            )
+        )
+        st.altair_chart(donut, width='stretch')
+
+    st.divider()
+    st.subheader("권장발주수량 TOP 15 지점")
+    if total_reorder_qty == 0:
+        st.info("발주가 필요한 지점이 없습니다.")
+    else:
+        st.altair_chart(
+            _top_n_hbar_chart(branch_summary.set_index("지점")["권장발주수량_합계"], "권장발주수량_합계"),
+            width='stretch',
+        )
+
+    st.divider()
+    st.subheader("데드스톡 재고량 TOP 15 지점")
+    dead_by_branch = data[data["상태"] == "데드스톡(판매없음)"].groupby("지점")["재고수량"].sum()
+    if dead_by_branch.empty:
+        st.info("데드스톡 재고가 없습니다.")
+    else:
+        st.altair_chart(_top_n_hbar_chart(dead_by_branch, "재고수량"), width='stretch')
+
+    st.divider()
+    st.subheader("지점별 요약 (권장발주수량 합계 내림차순)")
     st.dataframe(branch_summary, width="stretch")
 
     st.divider()
