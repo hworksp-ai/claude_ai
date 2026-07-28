@@ -551,17 +551,59 @@ def page_upload_logs():
         st.dataframe(logs, width="stretch")
 
 
-PAGES = {
+UPLOAD_PAGES = {
     "현재고 업로드": page_stock_upload,
     "판매현황 업로드": page_sales_upload,
     "발주 업로드": page_order_batch_upload,
     "입고현황 업로드": page_order_unit_upload,
+}
+DASHBOARD_PAGES = {
     "재고 대시보드": page_stock_dashboard,
     "판매 트래커": page_sales_dashboard,
     "발주 관리": page_order_dashboard,
     "업로드 이력": page_upload_logs,
 }
+PAGES = {**UPLOAD_PAGES, **DASHBOARD_PAGES}
+
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "재고 대시보드"
+
+
+def _on_upload_select():
+    st.session_state.current_page = st.session_state.upload_nav
+    st.session_state.dashboard_nav = None
+
+
+def _on_dashboard_select():
+    st.session_state.current_page = st.session_state.dashboard_nav
+    st.session_state.upload_nav = None
+
 
 st.sidebar.title("하이모 기성가발 관리")
-selected_page = st.sidebar.radio("메뉴", list(PAGES.keys()))
-PAGES[selected_page]()
+
+st.sidebar.markdown("#### 📤 업로드")
+st.sidebar.radio(
+    "업로드",
+    list(UPLOAD_PAGES.keys()),
+    index=list(UPLOAD_PAGES.keys()).index(st.session_state.current_page)
+    if st.session_state.current_page in UPLOAD_PAGES
+    else None,
+    key="upload_nav",
+    on_change=_on_upload_select,
+    label_visibility="collapsed",
+)
+
+st.sidebar.divider()
+st.sidebar.markdown("#### 📊 대시보드")
+st.sidebar.radio(
+    "대시보드",
+    list(DASHBOARD_PAGES.keys()),
+    index=list(DASHBOARD_PAGES.keys()).index(st.session_state.current_page)
+    if st.session_state.current_page in DASHBOARD_PAGES
+    else None,
+    key="dashboard_nav",
+    on_change=_on_dashboard_select,
+    label_visibility="collapsed",
+)
+
+PAGES[st.session_state.current_page]()
