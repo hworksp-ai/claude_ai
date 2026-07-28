@@ -147,44 +147,53 @@ def init_db():
             conn.execute(text(stmt))
 
 
-def upsert_branch(branch_id: str, branch_code: str | None = None):
+def _upsert_branches(conn, rows: list[dict]):
+    """rows: [{"branch_id":..., "branch_code":...}, ...]. 하나의 연결/트랜잭션 안에서 한 번에 처리해
+    지점 수만큼 개별 왕복하던 것(N+1)을 단일 왕복으로 줄인다."""
+    if not rows:
+        return
+    conn.execute(
+        text(
+            """
+            INSERT INTO branches (branch_id, branch_code) VALUES (:branch_id, :branch_code)
+            ON CONFLICT(branch_id) DO UPDATE SET branch_code=COALESCE(excluded.branch_code, branches.branch_code)
+            """
+        ),
+        _sanitize_dicts(rows),
+    )
+
+
+def _upsert_products(conn, rows: list[dict]):
+    """rows: [{"product_id":..., "model":..., "color":..., "size":..., "category":...}, ...]. 위와 동일한 이유로 일괄 처리."""
+    if not rows:
+        return
+    conn.execute(
+        text(
+            """
+            INSERT INTO products (product_id, model, color, size, category)
+            VALUES (:product_id, :model, :color, :size, :category)
+            ON CONFLICT(product_id) DO UPDATE SET category=COALESCE(excluded.category, products.category)
+            """
+        ),
+        _sanitize_dicts(rows),
+    )
+
+
+def save_stock_upload(valid: pd.DataFrame, snapshot_date_str: str):
+    """valid: DataFrame with columns branch, model, color, size, quantity, category, product_id."""
+    branch_rows = [{"branch_id": b, "branch_code": None} for b in valid["branch"].drop_duplicates()]
+    prod_rows = valid[["product_id", "model", "color", "size", "category"]].drop_duplicates(subset=["product_id"])
+    product_rows = [
+        {"product_id": r.product_id, "model": r.model, "color": r.color, "size": int(r.size), "category": r.category}
+        for r in prod_rows.itertuples(index=False)
+    ]
+    rows = list(zip([snapshot_date_str] * len(valid), valid["branch"], valid["product_id"], valid["quantity"]))
+
     engine = get_engine()
     with engine.begin() as conn:
-        conn.execute(
-            text(
-                """
-                INSERT INTO branches (branch_id, branch_code) VALUES (:branch_id, :branch_code)
-                ON CONFLICT(branch_id) DO UPDATE SET branch_code=COALESCE(excluded.branch_code, branches.branch_code)
-                """
-            ),
-            _sanitize_dict({"branch_id": branch_id, "branch_code": branch_code}),
-        )
-
-
-def upsert_product(product_id: str, model: str, color: str | None, size: int, category: str | None = None):
-    engine = get_engine()
-    with engine.begin() as conn:
-        conn.execute(
-            text(
-                """
-                INSERT INTO products (product_id, model, color, size, category)
-                VALUES (:product_id, :model, :color, :size, :category)
-                ON CONFLICT(product_id) DO UPDATE SET category=COALESCE(excluded.category, products.category)
-                """
-            ),
-            _sanitize_dict(
-                {"product_id": product_id, "model": model, "color": color, "size": size, "category": category}
-            ),
-        )
-
-
-def replace_inventory_snapshots(dates: set, rows: list):
-    """Delete existing snapshot rows for the given dates, then insert the new rows (overwrite-on-reupload)."""
-    engine = get_engine()
-    with engine.begin() as conn:
-        conn.execute(
-            text("DELETE FROM inventory_snapshots WHERE snapshot_date=:d"), [{"d": d} for d in dates]
-        )
+        _upsert_branches(conn, branch_rows)
+        _upsert_products(conn, product_rows)
+        conn.execute(text("DELETE FROM inventory_snapshots WHERE snapshot_date=:d"), {"d": snapshot_date_str})
         if rows:
             conn.execute(
                 text(
@@ -200,12 +209,28 @@ def replace_inventory_snapshots(dates: set, rows: list):
                     ]
                 ),
             )
+    return len(rows)
 
 
-def replace_sales(months: set, rows: list):
-    """Delete existing sales rows for the given sale_months, then insert the new rows (overwrite-on-reupload)."""
+def save_sales_upload(valid: pd.DataFrame):
+    """valid: DataFrame with columns sale_month, branch, branch_code, model, color, size, quantity, amount, product_id."""
+    branch_map = valid[["branch", "branch_code"]].drop_duplicates(subset=["branch"])
+    branch_rows = [
+        {"branch_id": r.branch, "branch_code": _sanitize(r.branch_code) or None}
+        for r in branch_map.itertuples(index=False)
+    ]
+    prod_rows = valid[["product_id", "model", "color", "size"]].drop_duplicates(subset=["product_id"])
+    product_rows = [
+        {"product_id": r.product_id, "model": r.model, "color": r.color, "size": int(r.size), "category": None}
+        for r in prod_rows.itertuples(index=False)
+    ]
+    months = set(valid["sale_month"])
+    rows = list(zip(valid["sale_month"], valid["branch"], valid["product_id"], valid["quantity"], valid["amount"]))
+
     engine = get_engine()
     with engine.begin() as conn:
+        _upsert_branches(conn, branch_rows)
+        _upsert_products(conn, product_rows)
         conn.execute(text("DELETE FROM sales WHERE sale_month=:m"), [{"m": m} for m in months])
         if rows:
             conn.execute(
@@ -225,35 +250,6 @@ def replace_sales(months: set, rows: list):
                     ]
                 ),
             )
-
-
-def save_stock_upload(valid: pd.DataFrame, snapshot_date_str: str):
-    """valid: DataFrame with columns branch, model, color, size, quantity, category, product_id."""
-    for b in valid["branch"].drop_duplicates():
-        upsert_branch(b)
-
-    prod_rows = valid[["product_id", "model", "color", "size", "category"]].drop_duplicates(subset=["product_id"])
-    for _, r in prod_rows.iterrows():
-        upsert_product(r["product_id"], r["model"], r["color"], int(r["size"]), r["category"])
-
-    rows = list(zip([snapshot_date_str] * len(valid), valid["branch"], valid["product_id"], valid["quantity"]))
-    replace_inventory_snapshots({snapshot_date_str}, rows)
-    return len(rows)
-
-
-def save_sales_upload(valid: pd.DataFrame):
-    """valid: DataFrame with columns sale_month, branch, branch_code, model, color, size, quantity, amount, product_id."""
-    branch_map = valid[["branch", "branch_code"]].drop_duplicates(subset=["branch"])
-    for _, r in branch_map.iterrows():
-        upsert_branch(r["branch"], _sanitize(r["branch_code"]) or None)
-
-    prod_rows = valid[["product_id", "model", "color", "size"]].drop_duplicates(subset=["product_id"])
-    for _, r in prod_rows.iterrows():
-        upsert_product(r["product_id"], r["model"], r["color"], int(r["size"]))
-
-    months = set(valid["sale_month"])
-    rows = list(zip(valid["sale_month"], valid["branch"], valid["product_id"], valid["quantity"], valid["amount"]))
-    replace_sales(months, rows)
     return len(rows), months
 
 
@@ -263,12 +259,12 @@ def save_order_batches(valid: pd.DataFrame):
     serial_range, factory_accept_date, note.
     Overwrites by order_no (re-uploading a batch replaces its previous line items).
     """
-    for b in valid["branch"].drop_duplicates():
-        upsert_branch(b)
-
+    branch_rows = [{"branch_id": b, "branch_code": None} for b in valid["branch"].drop_duplicates()]
     prod_rows = valid[["product_id", "model", "color", "size"]].drop_duplicates(subset=["product_id"])
-    for _, r in prod_rows.iterrows():
-        upsert_product(r["product_id"], r["model"], r["color"], int(r["size"]))
+    product_rows = [
+        {"product_id": r.product_id, "model": r.model, "color": r.color, "size": int(r.size), "category": None}
+        for r in prod_rows.itertuples(index=False)
+    ]
 
     engine = get_engine()
     order_nos = list(valid["order_no"].drop_duplicates())
@@ -278,6 +274,8 @@ def save_order_batches(valid: pd.DataFrame):
         "serial_range", "factory_accept_date", "note",
     ]
     with engine.begin() as conn:
+        _upsert_branches(conn, branch_rows)
+        _upsert_products(conn, product_rows)
         conn.execute(text("DELETE FROM order_batches WHERE order_no=:o"), [{"o": o} for o in order_nos])
         conn.execute(
             text(
@@ -304,12 +302,12 @@ def save_order_units(valid: pd.DataFrame):
     trade_ship_date, stock_date, cancel_date, discard_date.
     Upserts by order_unit_no so re-uploads reflect status progression without duplicating rows.
     """
-    for b in valid["branch"].drop_duplicates():
-        upsert_branch(b)
-
+    branch_rows = [{"branch_id": b, "branch_code": None} for b in valid["branch"].drop_duplicates()]
     prod_rows = valid[["product_id", "model", "color", "size"]].drop_duplicates(subset=["product_id"])
-    for _, r in prod_rows.iterrows():
-        upsert_product(r["product_id"], r["model"], r["color"], int(r["size"]))
+    product_rows = [
+        {"product_id": r.product_id, "model": r.model, "color": r.color, "size": int(r.size), "category": None}
+        for r in prod_rows.itertuples(index=False)
+    ]
 
     engine = get_engine()
     cols = [
@@ -318,6 +316,8 @@ def save_order_units(valid: pd.DataFrame):
         "trade_ship_date", "stock_date", "cancel_date", "discard_date",
     ]
     with engine.begin() as conn:
+        _upsert_branches(conn, branch_rows)
+        _upsert_products(conn, product_rows)
         conn.execute(
             text(
                 """

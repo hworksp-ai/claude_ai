@@ -62,6 +62,97 @@ apply_database_url_from_secrets()
 db.init_db()
 
 
+# ── 캐시된 조회 함수 ──────────────────────────────────────────────────────────
+# Streamlit은 위젯 조작(선택박스 변경 등) 때마다 페이지 함수를 처음부터 다시 실행하므로,
+# 캐싱 없이는 같은 조회를 매번 DB(원격 Postgres)에 다시 왕복해서 느려진다.
+# 업로드가 성공하면 st.cache_data.clear()로 전체를 무효화해 최신 데이터를 즉시 반영한다.
+
+
+@st.cache_data(ttl=600)
+def cached_list_snapshot_dates():
+    return db.list_snapshot_dates()
+
+
+@st.cache_data(ttl=600)
+def cached_list_branches():
+    return db.list_branches()
+
+
+@st.cache_data(ttl=600)
+def cached_list_categories():
+    return db.list_categories()
+
+
+@st.cache_data(ttl=600)
+def cached_list_products(category, model_search):
+    return db.list_products(category, model_search)
+
+
+@st.cache_data(ttl=600)
+def cached_get_inventory_branch_totals(snapshot_date):
+    return db.get_inventory_branch_totals(snapshot_date)
+
+
+@st.cache_data(ttl=600)
+def cached_get_inventory_category_pivot(snapshot_date):
+    return db.get_inventory_category_pivot(snapshot_date)
+
+
+@st.cache_data(ttl=600)
+def cached_get_inventory_pivot(snapshot_date, category, model_search):
+    return db.get_inventory_pivot(snapshot_date, category, model_search)
+
+
+@st.cache_data(ttl=600)
+def cached_get_inventory_trend(branch_id, product_id):
+    return db.get_inventory_trend(branch_id, product_id)
+
+
+@st.cache_data(ttl=600)
+def cached_get_sales_months():
+    return db.get_sales_months()
+
+
+@st.cache_data(ttl=600)
+def cached_get_branch_ranking(start_month, end_month):
+    return db.get_branch_ranking(start_month, end_month)
+
+
+@st.cache_data(ttl=600)
+def cached_get_monthly_trend(branch_id):
+    return db.get_monthly_trend(branch_id)
+
+
+@st.cache_data(ttl=600)
+def cached_get_branch_comparison(start_month, end_month, metric):
+    return db.get_branch_comparison(start_month, end_month, metric)
+
+
+@st.cache_data(ttl=600)
+def cached_get_turnover_detail():
+    return db.get_turnover_detail()
+
+
+@st.cache_data(ttl=600)
+def cached_get_order_status_summary():
+    return db.get_order_status_summary()
+
+
+@st.cache_data(ttl=600)
+def cached_list_order_units(branch_id, status):
+    return db.list_order_units(branch_id, status)
+
+
+@st.cache_data(ttl=600)
+def cached_get_lead_time_stats():
+    return db.get_lead_time_stats()
+
+
+@st.cache_data(ttl=600)
+def cached_list_order_batches(branch_id=None, start_date=None, end_date=None):
+    return db.list_order_batches(branch_id, start_date, end_date)
+
+
 # ── 재고 업로드 ──────────────────────────────────────────────────────────────
 
 
@@ -133,6 +224,7 @@ def page_stock_upload():
                     {"model": "first", "color": "first", "size": "first", "category": "first", "quantity": "sum"}
                 )
                 row_count = db.save_stock_upload(combined, snap_str)
+                st.cache_data.clear()
                 st.success(f"총 {row_count}건 업로드 완료 (기준일: {snap_str}, 파일 {len(valid_frames)}개)")
                 if total_dropped:
                     st.warning(f"지점/모델/수량 값이 비어있는 {total_dropped}건은 제외되었습니다.")
@@ -218,6 +310,7 @@ def page_sales_upload():
             try:
                 combined = pd.concat(valid_frames, ignore_index=True)
                 row_count, months = db.save_sales_upload(combined)
+                st.cache_data.clear()
                 st.success(f"총 {row_count}건 업로드 완료 (대상 월: {', '.join(sorted(months))})")
                 if total_dropped:
                     st.warning(f"필수 값이 비어있거나 판매월 형식이 잘못된 {total_dropped}건은 제외되었습니다.")
@@ -312,6 +405,7 @@ def page_order_batch_upload():
             try:
                 combined = pd.concat(valid_frames, ignore_index=True)
                 row_count = db.save_order_batches(combined)
+                st.cache_data.clear()
                 st.success(f"총 {row_count}건 업로드 완료 (발주번호 {combined['order_no'].nunique()}건)")
                 if total_dropped:
                     st.warning(f"필수 값이 비어있는 {total_dropped}건은 제외되었습니다.")
@@ -408,6 +502,7 @@ def page_order_unit_upload():
                 results.append({"파일명": name, "상태": "실패", "비고": f"DB 저장 오류: {e}"})
 
         if total_rows:
+            st.cache_data.clear()
             st.success(f"총 {total_rows}건 업로드(갱신) 완료")
         if total_dropped:
             st.warning(f"필수 값이 비어있는 {total_dropped}건은 제외되었습니다.")
@@ -423,7 +518,7 @@ def page_order_dashboard():
     st.header("발주 관리")
 
     st.subheader("진행상태별 집계")
-    summary = db.get_order_status_summary()
+    summary = cached_get_order_status_summary()
     if summary.empty:
         st.info("아직 업로드된 입고현황 데이터가 없습니다. '입고현황 업로드' 메뉴에서 발주현황조회 엑셀을 업로드해주세요.")
     else:
@@ -435,7 +530,7 @@ def page_order_dashboard():
 
     st.divider()
     st.subheader("입고현황 목록")
-    branch_options = ["전체"] + [b[0] for b in db.list_branches()]
+    branch_options = ["전체"] + [b[0] for b in cached_list_branches()]
     status_options = ["전체", "발주대기", "공장발송", "공장접수(생산중)", "공장출고", "무역부입고",
                        "무역부선적(배송중)", "입고완료", "취소", "폐기"]
     c1, c2 = st.columns(2)
@@ -443,14 +538,14 @@ def page_order_dashboard():
         sel_branch = st.selectbox("지점", branch_options, key="order_unit_branch_filter")
     with c2:
         sel_status = st.selectbox("진행상태", status_options, key="order_unit_status_filter")
-    units = db.list_order_units(
+    units = cached_list_order_units(
         None if sel_branch == "전체" else sel_branch, None if sel_status == "전체" else sel_status
     )
     st.dataframe(units, width="stretch")
 
     st.divider()
     st.subheader("발주 리드타임 (공장 발송 → 입고, 발주공장별 평균)")
-    lead = db.get_lead_time_stats()
+    lead = cached_get_lead_time_stats()
     if lead.empty:
         st.info("리드타임을 계산할 입고 완료 데이터가 없습니다.")
     else:
@@ -459,7 +554,7 @@ def page_order_dashboard():
     st.divider()
     st.subheader("발주 목록 (배치 단위)")
     branch_sel2 = st.selectbox("지점 ", branch_options, key="order_batch_branch_filter")
-    batches = db.list_order_batches(None if branch_sel2 == "전체" else branch_sel2)
+    batches = cached_list_order_batches(None if branch_sel2 == "전체" else branch_sel2)
     if batches.empty:
         st.info("아직 업로드된 발주 데이터가 없습니다. '발주 업로드' 메뉴에서 발주 엑셀을 업로드해주세요.")
     else:
@@ -472,7 +567,7 @@ def page_order_dashboard():
 def page_stock_dashboard():
     st.header("지점별 재고 현황")
 
-    dates = db.list_snapshot_dates()
+    dates = cached_list_snapshot_dates()
     if not dates:
         st.info("아직 업로드된 재고 데이터가 없습니다. '현재고 업로드' 메뉴에서 재고 엑셀을 업로드해주세요.")
         return
@@ -484,7 +579,7 @@ def page_stock_dashboard():
         return "background-color: #ffcdd2" if isinstance(v, (int, float)) and v < threshold else ""
 
     st.subheader("지점별 총 재고")
-    totals = db.get_inventory_branch_totals(selected_date)
+    totals = cached_get_inventory_branch_totals(selected_date)
     if totals.empty:
         st.info("선택한 기준일에 데이터가 없습니다.")
     else:
@@ -496,7 +591,7 @@ def page_stock_dashboard():
 
     st.divider()
     st.subheader("카테고리별 지점 재고")
-    cat_pivot = db.get_inventory_category_pivot(selected_date)
+    cat_pivot = cached_get_inventory_category_pivot(selected_date)
     if cat_pivot.empty:
         st.info("데이터가 없습니다.")
     else:
@@ -505,14 +600,14 @@ def page_stock_dashboard():
     st.divider()
     st.subheader("모델 검색으로 상세 재고 조회")
     st.caption("상품 종류가 많아 (2,000개 이상 SKU) 전체를 한 번에 보여주지 않습니다. 카테고리/모델명으로 좁혀서 조회하세요.")
-    categories = ["전체"] + db.list_categories()
+    categories = ["전체"] + cached_list_categories()
     c1, c2 = st.columns(2)
     with c1:
         sel_category = st.selectbox("카테고리", categories, key="stock_category_filter")
     with c2:
         model_search = st.text_input("모델명 검색 (부분 일치)", key="stock_model_search")
 
-    detail_pivot = db.get_inventory_pivot(
+    detail_pivot = cached_get_inventory_pivot(
         selected_date, None if sel_category == "전체" else sel_category, model_search or None
     )
     if detail_pivot.empty:
@@ -524,8 +619,8 @@ def page_stock_dashboard():
 
     st.divider()
     st.subheader("지점/상품별 재고 추이")
-    branches = db.list_branches()
-    products = db.list_products(None if sel_category == "전체" else sel_category, model_search or None)
+    branches = cached_list_branches()
+    products = cached_list_products(None if sel_category == "전체" else sel_category, model_search or None)
     if not branches or not products:
         st.info("추이를 조회할 상품이 없습니다. 위에서 카테고리/모델명을 지정해주세요.")
         return
@@ -538,7 +633,7 @@ def page_stock_dashboard():
     with c2:
         sel_product = st.selectbox("상품 선택", products, format_func=lambda p: p[1])
 
-    trend = db.get_inventory_trend(sel_branch[0], sel_product[0])
+    trend = cached_get_inventory_trend(sel_branch[0], sel_product[0])
     if trend.empty:
         st.info("선택한 지점/상품의 재고 이력이 없습니다.")
     else:
@@ -551,7 +646,7 @@ def page_stock_dashboard():
 def page_sales_dashboard():
     st.header("지점별 판매 트래커")
 
-    months = db.get_sales_months()
+    months = cached_get_sales_months()
     if not months:
         st.info("아직 업로드된 판매 데이터가 없습니다. '판매현황 업로드' 메뉴에서 판매 엑셀을 업로드해주세요.")
         return
@@ -567,7 +662,7 @@ def page_sales_dashboard():
         return
 
     st.subheader("지점 순위")
-    ranking = db.get_branch_ranking(start_month, end_month)
+    ranking = cached_get_branch_ranking(start_month, end_month)
     if ranking.empty:
         st.info("선택한 기간에 데이터가 없습니다.")
     else:
@@ -576,9 +671,9 @@ def page_sales_dashboard():
 
     st.divider()
     st.subheader("기간별 추이")
-    branch_options = ["전체"] + [b[0] for b in db.list_branches()]
+    branch_options = ["전체"] + [b[0] for b in cached_list_branches()]
     sel = st.selectbox("지점 선택 (추이)", branch_options)
-    trend = db.get_monthly_trend(None if sel == "전체" else sel)
+    trend = cached_get_monthly_trend(None if sel == "전체" else sel)
     if trend.empty:
         st.info("데이터가 없습니다.")
     else:
@@ -589,7 +684,7 @@ def page_sales_dashboard():
     metric = st.radio(
         "지표", ["amount", "quantity"], horizontal=True, format_func=lambda m: "판매금액" if m == "amount" else "판매수량"
     )
-    comparison = db.get_branch_comparison(start_month, end_month, metric)
+    comparison = cached_get_branch_comparison(start_month, end_month, metric)
     if comparison.empty:
         st.info("선택한 기간에 데이터가 없습니다.")
     else:
@@ -652,7 +747,7 @@ def page_turnover_dashboard():
         "(판매 이력이 없는 조합은 '판매없음'으로 분류)"
     )
 
-    turnover = db.get_turnover_detail()
+    turnover = cached_get_turnover_detail()
     if turnover.empty:
         st.info("재고 또는 판매 데이터가 없습니다. '현재고 업로드'와 '판매현황 업로드' 메뉴에서 먼저 데이터를 업로드해주세요.")
         return
@@ -699,7 +794,8 @@ def page_turnover_dashboard():
     finite_all = turnover[turnover["재고소진개월"] != float("inf")]
     turnover_mean = finite_all.groupby("지점")["재고소진개월"].mean().rename("평균재고소진개월")
     branch_agg = branch_agg.merge(turnover_mean, on="지점", how="left")
-    branch_agg["평균재고소진개월"] = branch_agg["평균재고소진개월"].fillna(branch_agg["평균재고소진개월"].median())
+    # 판매 이력이 아예 없으면(전부 데드스톡) median 자체가 NaN이 되어 KMeans가 실패하므로 0으로 최종 대체한다.
+    branch_agg["평균재고소진개월"] = branch_agg["평균재고소진개월"].fillna(branch_agg["평균재고소진개월"].median()).fillna(0)
 
     if len(branch_agg) < 4:
         st.info("군집 분석을 하기에 지점 수가 너무 적습니다 (최소 4개 지점 필요).")
@@ -752,7 +848,7 @@ def page_reorder_dashboard():
         "월평균판매는 판매 이력이 있는 전체 기간의 평균입니다."
     )
 
-    data = db.get_turnover_detail()
+    data = cached_get_turnover_detail()
     if data.empty:
         st.info("재고 또는 판매 데이터가 없습니다. '현재고 업로드'와 '판매현황 업로드' 메뉴에서 먼저 데이터를 업로드해주세요.")
         return
