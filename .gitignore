@@ -2,6 +2,7 @@
 .env
 **/.env
 .streamlit/secrets.toml
+**/.streamlit/secrets.toml
 
 # Python
 __pycache__/
@@ -13,3 +14,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# 기성가발 관리 앱 로컬 DB (실제 판매/재고 데이터 포함, git에 올리지 않음)
+wig_inventory/data/*.db
