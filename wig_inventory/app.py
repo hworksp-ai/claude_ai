@@ -689,6 +689,106 @@ def page_turnover_dashboard():
         st.scatter_chart(branch_agg, x="월평균판매합계", y="평균재고소진개월", color="군집")
 
 
+# ── 지점별 재고·판매·발주 분석 ────────────────────────────────────────────────
+
+_REORDER_STATUS_ORDER = ["품절(긴급발주)", "재고부족(발주필요)", "정상", "재고과잉(저회전)", "데드스톡(판매없음)"]
+
+
+def _classify_reorder_status(row) -> str:
+    if row["월평균판매"] == 0:
+        return "데드스톡(판매없음)"
+    if row["재고수량"] == 0:
+        return "품절(긴급발주)"
+    if row["재고소진개월"] < 1:
+        return "재고부족(발주필요)"
+    if row["재고소진개월"] <= 12:
+        return "정상"
+    return "재고과잉(저회전)"
+
+
+def page_reorder_dashboard():
+    st.header("지점별 재고·판매·발주 분석")
+    st.caption(
+        "지점 x 모델별 재고 상태를 분류하고 권장발주수량을 계산합니다. "
+        "목표재고 = 월평균판매 x 2개월 · 권장발주수량 = MAX(0, 목표재고 − 현재고). "
+        "월평균판매는 판매 이력이 있는 전체 기간의 평균입니다."
+    )
+
+    data = db.get_turnover_detail()
+    if data.empty:
+        st.info("재고 또는 판매 데이터가 없습니다. '현재고 업로드'와 '판매현황 업로드' 메뉴에서 먼저 데이터를 업로드해주세요.")
+        return
+
+    data = data.copy()
+    data["상태"] = data.apply(_classify_reorder_status, axis=1)
+    data["목표재고"] = (data["월평균판매"] * 2).round(1)
+    data["권장발주수량"] = (data["목표재고"] - data["재고수량"]).clip(lower=0).round().astype(int)
+    data.loc[data["상태"] == "데드스톡(판매없음)", "권장발주수량"] = 0
+
+    detail_cols = ["지점", "모델", "컬러", "사이즈", "카테고리", "재고수량", "월평균판매", "재고소진개월", "목표재고", "권장발주수량"]
+
+    st.subheader("상태별 건수")
+    counts = data["상태"].value_counts().reindex(_REORDER_STATUS_ORDER, fill_value=0)
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        st.dataframe(counts.rename("건수"), width="stretch")
+    with c2:
+        st.bar_chart(counts)
+
+    st.divider()
+    st.subheader("지점별 요약 (권장발주수량 합계 내림차순)")
+    branch_summary = (
+        data.groupby("지점")
+        .agg(
+            취급모델수=("모델", "count"),
+            총재고수량=("재고수량", "sum"),
+            권장발주수량_합계=("권장발주수량", "sum"),
+            긴급발주_필요건수=("상태", lambda s: s.isin(["품절(긴급발주)", "재고부족(발주필요)"]).sum()),
+            데드스톡_건수=("상태", lambda s: (s == "데드스톡(판매없음)").sum()),
+        )
+        .reset_index()
+        .sort_values("권장발주수량_합계", ascending=False)
+    )
+    st.dataframe(branch_summary, width="stretch")
+
+    st.divider()
+    st.subheader("긴급발주 상세 (품절 + 재고부족)")
+    branch_options = ["전체"] + sorted(data["지점"].unique().tolist())
+    sel_branch = st.selectbox("지점", branch_options, key="reorder_branch_filter")
+    urgent = data[data["상태"].isin(["품절(긴급발주)", "재고부족(발주필요)"])]
+    if sel_branch != "전체":
+        urgent = urgent[urgent["지점"] == sel_branch]
+    if urgent.empty:
+        st.info("긴급발주가 필요한 항목이 없습니다.")
+    else:
+        st.dataframe(urgent[detail_cols].sort_values("권장발주수량", ascending=False), width="stretch")
+
+    st.divider()
+    st.subheader("재고과잉 상세 (저회전, 재고소진예상 12개월 초과)")
+    excess = data[data["상태"] == "재고과잉(저회전)"]
+    if excess.empty:
+        st.info("재고과잉 항목이 없습니다.")
+    else:
+        st.dataframe(excess[detail_cols].sort_values("재고소진개월", ascending=False), width="stretch")
+
+    st.divider()
+    st.subheader("데드스톡 상세 (판매 이력 없음)")
+    dead = data[data["상태"] == "데드스톡(판매없음)"]
+    if dead.empty:
+        st.info("데드스톡 항목이 없습니다.")
+    else:
+        st.dataframe(dead[["지점", "모델", "컬러", "사이즈", "카테고리", "재고수량"]], width="stretch")
+
+    st.divider()
+    st.subheader("전체 상세 데이터")
+    st.caption(f"{len(data)}건")
+    st.dataframe(data[detail_cols + ["상태"]], width="stretch")
+    csv = data[detail_cols + ["상태"]].to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        "전체 상세 데이터 CSV 다운로드", data=csv, file_name="지점별_재고판매발주_분석.csv", mime="text/csv"
+    )
+
+
 # ── 업로드 이력 ──────────────────────────────────────────────────────────────
 
 
@@ -711,6 +811,7 @@ DASHBOARD_PAGES = {
     "재고 대시보드": page_stock_dashboard,
     "판매 트래커": page_sales_dashboard,
     "재고회전율 분석": page_turnover_dashboard,
+    "지점별 재고·판매·발주 분석": page_reorder_dashboard,
     "발주 관리": page_order_dashboard,
     "업로드 이력": page_upload_logs,
 }
